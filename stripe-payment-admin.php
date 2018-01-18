@@ -215,6 +215,21 @@ class StripePaymentSetting {   // 管理画面
                                id="input_stripe_payment_loading_gif"
                                value="<?php echo $stripe_payment_loading_gif; ?>"/></td>
                 </tr>
+
+                <tr>
+                    <th scope="row"><label for="input_stripe_payment_item_count_by_payid"><?php _e( 'Stripe Item Result Count', 'stripe-payment-gti' ); ?></label></th>
+                    <td>
+                        <?php
+                        $result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts', "" ) );
+                        if ( $result_counts && is_array( $result_counts ) && count( $result_counts ) > 0 ) {
+                            foreach ( $result_counts as $key=>$val ) {
+                                echo $key." = ".$val."<br>";
+                            }
+                        }
+
+                        ?>
+                    </td>
+                </tr>
             </table>
 
             <input name="usces_option_update" type="submit" class="button button-primary"

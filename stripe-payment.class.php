@@ -27,13 +27,17 @@ class StripePayment extends Singleton {
 			"checkout_btn_text" => "",
 			"checkout_label_text"   => "",
 			"address"           => "",  // 住所入力するかパラメータ存在したら ON
-			"ship_address"      => "",   // 送付先住所入力するかパラメータ存在したら　ON
-			"form"              => ""
+			"ship_address"      => "",  // 送付先住所入力するかパラメータ存在したら　ON
+			"form"              => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
+			"pay_id"                => "",  // pay_id をつけることにより残カウントを有効化出来る
+			"count"             => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
 		$currency = $atts['currency'];
 		$amount   = $atts['price'];
+		$pay_id   = $atts['pay_id'];
+		$count    = $atts['count'];
 
 		if ( $_REQUEST['stripeToken'] ) {
 			/**
@@ -67,6 +71,8 @@ class StripePayment extends Singleton {
 				'currency'                         => esc_attr( $currency ),
 				'result'                           => esc_attr( $_REQUEST['result'] ),
 				'amount'                           => esc_attr( $amount ),
+				'pay_id'                           => esc_attr( $pay_id ),
+				'count'                            => esc_attr( $count ),
 				'stripeToken'                      => esc_attr( $_REQUEST['stripeToken'] ),
 				'stripeTokenType'                  => esc_attr( $_REQUEST['stripeTokenType'] ),
 				'stripeEmail'                      => esc_attr( $_REQUEST['stripeEmail'] ),
@@ -102,7 +108,6 @@ class StripePayment extends Singleton {
 			$this->stripe_order( $args );
 			$_REQUEST = null;
 		}
-		$price             = esc_attr( $atts['price'] );
 		$checkout_btn_text = "";
 		$checkout_label_text   = "";
 		if ( isset( $atts['checkout_btn_text'] ) && trim( $atts['checkout_btn_text'] ) != "" ) {
@@ -113,8 +118,8 @@ class StripePayment extends Singleton {
 		}
 		$loading_gif = get_option( 'stripe_payment_loading_gif', STRIPE_PAYMENT_LOADING_GIF );
 
-		$checkout_btn_text = apply_filters( 'stripe-payment-gti-checkout_btn_text', $checkout_btn_text, $price );
-		$checkout_label_text   = apply_filters( 'stripe-payment-gti-checkout_label_text', $checkout_label_text, $price );
+		$checkout_btn_text = apply_filters( 'stripe-payment-gti-checkout_btn_text', $checkout_btn_text, $amount );
+		$checkout_label_text   = apply_filters( 'stripe-payment-gti-checkout_label_text', $checkout_label_text, $amount );
 		$loading_gif       = apply_filters( 'stripe_payment_loading_gif', $loading_gif );
 
 		$this->stripe_error_log( "purchase: Stripe " );
@@ -172,25 +177,28 @@ function stripe_purchase() {
 		// 住所入力するか
 		$address      = $atts['address'];
 		$ship_address = $atts['ship_address'];
+		$pay_id       = $atts['pay_id'];
+		$count        = $atts['count'];
 
 		// チェックアウト表示パラメータ
 		$checkout_args = array(
 			'checkout_label_text'   => $checkout_label_text,
 			'checkout_btn_text' => $checkout_btn_text,
-			'price'             => $price,
+			'price'             => $amount,
 			'email'             => $data_email,
 			'currency'          => $currency,
 			'address'           => $address,
-			'ship_address'      => $ship_address
+			'ship_address'      => $ship_address,
+			'pay_id'            => $pay_id,
+			'count'             => $count
 		);
-
 		// 通常決済の場合
 
 		$html_str .= $this->get_stripe_html( $checkout_args );
 
 
 		$html_str .= "
-				<input type='hidden' name='nonce' value='" . wp_create_nonce( $price ) . "'>";
+				<input type='hidden' name='nonce' value='" . wp_create_nonce( $amount ) . "'>";
 		if ( $atts['form'] === "" ) {
 			$html_str .= "</form></div>";
 		}
@@ -207,24 +215,42 @@ function stripe_purchase() {
 	 */
 	function get_stripe_html( $checkout_args ) {
 
+		$html_str = "";
+		$pay_id = $checkout_args['pay_id'];
+		$count  = intval( $checkout_args['count'] ); // 個数 整数でなければNG 数値でないまたはNULLなら0なので利用する
+
+		$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
+		$zan_count = 0;
+		if ( $result_counts ) {
+			if ( array_key_exists( $pay_id, $result_counts ) ) {
+				if ( isset( $result_counts[$pay_id] ) ) {
+					$zan_count = intval( $result_counts[ $pay_id ] );
+				}
+			}
+		} else {
+			$zan_count = $count;
+		}
+
+		if ( $zan_count > 0 || $count == 0 ) {
+
 		$site_name  = get_bloginfo( 'name' );
 		$public_key = get_option( 'stripe_payment_public_key' );
 
-		$checkout_label_text   = "";
-		$checkout_btn_text = "";
-		$price             = 0;
-		$data_email        = "";
-		$currency          = "";
-		$address_flg       = "false";
-		$ship_address_flg  = "false";
+		$checkout_label_text = "";
+		$checkout_btn_text   = "";
+		$amount               = 0;
+		$data_email          = "";
+		$currency            = "";
+		$address_flg         = "false";
+		$ship_address_flg    = "false";
 		if ( $checkout_args !== null && is_array( $checkout_args ) ) {
-			$price             = $checkout_args['price'];
-			$checkout_label_text   = sprintf( $checkout_args['checkout_label_text'], $price );
-			$checkout_btn_text = sprintf( $checkout_args['checkout_btn_text'], $price );
-			$data_email        = $checkout_args['email'];
-			$currency          = $checkout_args['currency'];
-			$address_flg       = ( $checkout_args['address'] !== "" ? "true" : "false" );
-			$ship_address_flg  = ( $checkout_args['ship_address'] !== "" ? "true" : "false" );
+			$amount               = $checkout_args['price'];
+			$checkout_label_text = sprintf( $checkout_args['checkout_label_text'], $amount );
+			$checkout_btn_text   = sprintf( $checkout_args['checkout_btn_text'], $amount );
+			$data_email          = $checkout_args['email'];
+			$currency            = $checkout_args['currency'];
+			$address_flg         = ( $checkout_args['address'] !== "" ? "true" : "false" );
+			$ship_address_flg    = ( $checkout_args['ship_address'] !== "" ? "true" : "false" );
 		}
 
 		if ( $currency == "" ) {
@@ -233,7 +259,7 @@ function stripe_purchase() {
 
 		$stripe_payment_checkout_img = apply_filters( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
 
-		$html_str = "<script
+		$html_str .= "<script
 		src='https://checkout.stripe.com/checkout.js' class='stripe-button' 
 		";
 		if ( $address_flg !== "false" ) {
@@ -248,7 +274,7 @@ function stripe_purchase() {
 		}
 		$html_str .= "
 		data-name='{$site_name}'
-		data-amount='{$price}'
+		data-amount='{$amount}'
 		data-key='{$public_key}'
 		data-label='{$checkout_btn_text}'
 		data-description='{$checkout_label_text}'
@@ -258,7 +284,9 @@ function stripe_purchase() {
 		data-email='{$data_email}'
 		data-allow-remember-me='false'
 		data-currency='{$currency}'></script>";
-
+		} else {
+			$html_str .= "<p class='stripe-payment-no-item'>".__( 'No Item.', 'stripe-payment-gti' )."</p>";
+		}
 		return $html_str;
 	}
 
@@ -289,6 +317,8 @@ function stripe_purchase() {
 
 		$amount = $args['amount'];
 		$email  = $args['stripeEmail'];
+		$pay_id = $args['pay_id'];
+		$count  = $args['count'];
 
 		if ( $token != '' ) {    //Stripe
 
@@ -305,6 +335,36 @@ function stripe_purchase() {
 
 				$card_brand = $stripeinfo->card->brand;
 				$card_last4 = $stripeinfo->card->last4;
+
+				// 残数管理の場合マイナスする
+				if ( is_numeric( $count ) && intval( $count ) > 0 ) {
+					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
+					if ( $result_counts ) {
+						if ( array_key_exists( $pay_id, $result_counts ) ) {
+							$zan_count = $result_counts[$pay_id];
+							if ( $zan_count > 0 ) {
+								$result_counts[$pay_id] = $zan_count - 1;
+							}
+						}
+					} else {
+						$zan_count = intval( $count ) - 1;
+						$result_counts = array();
+						$result_counts[ $pay_id ] = $zan_count;
+					}
+
+				} else {
+					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
+					if ( $result_counts ) {
+						if ( array_key_exists( $pay_id, $result_counts ) ) {
+							unset( $result_counts[ $pay_id ] );
+						}
+					} else {
+						$result_counts = array();
+					}
+				}
+				$serial_data = serialize( $result_counts );
+
+				update_option( 'stripe-payment_result-counts', $serial_data );
 
 				// メール送信
 				// メール
@@ -408,6 +468,10 @@ function stripe_purchase() {
 
 				// オプション処理
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
+
+				// カウント有効の場合はカウントを引き算する
+				$zan_count =
+
 				$thanks_msg = str_replace( "\n", "<br>", $thanks_msg );
 				echo $thanks_msg;
 
