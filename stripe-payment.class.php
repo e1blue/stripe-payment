@@ -44,6 +44,7 @@ class StripePayment extends Singleton {
 
 		$subscription = $atts['subscription'];
 		$interval  = $atts['interval'];
+		$description = $atts['description'];
 
 		if ( $_REQUEST['stripeToken'] ) {
 			/**
@@ -81,6 +82,7 @@ class StripePayment extends Singleton {
 				'count'                            => esc_attr( $count ),
 				'subscription'                     => esc_attr( $subscription ),
 				'interval'                         => esc_attr( $interval ),
+				'description'                      => esc_attr( $description ),
 				'stripeToken'                      => esc_attr( $_REQUEST['stripeToken'] ),
 				'stripeTokenType'                  => esc_attr( $_REQUEST['stripeTokenType'] ),
 				'stripeEmail'                      => esc_attr( $_REQUEST['stripeEmail'] ),
@@ -290,7 +292,8 @@ function stripe_purchase() {
 		data-name='{$site_name}'
 		data-amount='{$amount}'
 		data-key='{$public_key}'
-		data-label='{$checkout_btn_text}'
+		data-label='{$checkout_btn_text}' 
+		data-description='{$description}' 
 		data-panel-label='{$checkout_label_text}' 
 		data-image='{$stripe_payment_checkout_img}'
 		data-locale='auto' 
