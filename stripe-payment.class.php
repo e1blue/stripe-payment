@@ -26,6 +26,7 @@ class StripePayment extends Singleton {
 			"email"             => '',
 			"checkout_btn_text" => "",
 			"checkout_label_text"   => "",
+			"description"       => "",
 			"address"           => "",  // 住所入力するかパラメータ存在したら ON
 			"ship_address"      => "",  // 送付先住所入力するかパラメータ存在したら　ON
 			"form"              => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
@@ -116,6 +117,10 @@ class StripePayment extends Singleton {
 		if ( isset( $atts['checkout_label_text'] ) && trim( $atts['checkout_label_text'] ) != "" ) {
 			$checkout_label_text = $atts['checkout_label_text'];
 		}
+		$description = "";
+		if ( isset( $atts['description'] ) && trim( $atts['description'] ) != "" ) {
+			$description = esc_attr( $atts['description'] );
+		}
 		$loading_gif = get_option( 'stripe_payment_loading_gif', STRIPE_PAYMENT_LOADING_GIF );
 
 		$checkout_btn_text = apply_filters( 'stripe-payment-gti-checkout_btn_text', $checkout_btn_text, $amount );
@@ -184,6 +189,7 @@ function stripe_purchase() {
 		$checkout_args = array(
 			'checkout_label_text'   => $checkout_label_text,
 			'checkout_btn_text' => $checkout_btn_text,
+			'description'       => $description,
 			'price'             => $amount,
 			'email'             => $data_email,
 			'currency'          => $currency,
@@ -244,6 +250,7 @@ function stripe_purchase() {
 		$address_flg         = "false";
 		$ship_address_flg    = "false";
 		if ( $checkout_args !== null && is_array( $checkout_args ) ) {
+			$description         = $checkout_args['description'];
 			$amount               = $checkout_args['price'];
 			$checkout_label_text = sprintf( $checkout_args['checkout_label_text'], $amount );
 			$checkout_btn_text   = sprintf( $checkout_args['checkout_btn_text'], $amount );
@@ -277,7 +284,7 @@ function stripe_purchase() {
 		data-amount='{$amount}'
 		data-key='{$public_key}'
 		data-label='{$checkout_btn_text}'
-		data-description='{$checkout_label_text}'
+		data-panel-label='{$checkout_label_text}' 
 		data-image='{$stripe_payment_checkout_img}'
 		data-locale='auto' 
 		closed='stripe_purchase' 
@@ -468,9 +475,6 @@ function stripe_purchase() {
 
 				// オプション処理
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
-
-				// カウント有効の場合はカウントを引き算する
-				$zan_count =
 
 				$thanks_msg = str_replace( "\n", "<br>", $thanks_msg );
 				echo $thanks_msg;
