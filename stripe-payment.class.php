@@ -327,6 +327,10 @@ function stripe_purchase() {
 		$pay_id = $args['pay_id'];
 		$count  = $args['count'];
 
+		$description = ( isset( $args['description'] ) ? $args['description'] : "" );
+
+		$currency = ( isset( $args['currency'] ) ? $args['currency'] : "jpy" );
+
 		if ( $token != '' ) {    //Stripe
 
 			// 注文処理
@@ -343,6 +347,32 @@ function stripe_purchase() {
 				$card_brand = $stripeinfo->card->brand;
 				$card_last4 = $stripeinfo->card->last4;
 
+				$status = "";
+				$charge_id = "";
+				if ( !isset( $args['subscribe'] ) ) {
+					$charge = \Stripe\Charge::create(array(
+						"amount" => $amount,
+						"currency" => $currency,
+						"description" => $description,
+						"source" => $token,
+						));
+					$status = $charge->status; // succeeded で成功
+					if ( "succeeded" == $status ) {
+						$charge_id = $charge->id;
+					}
+
+				} else {
+					// Create Subscription
+//					\Stripe\Subscription::create(array(
+//						"customer" => "cus_CCsx5o2E9efcT8",
+//						"items" => array(
+//							array(
+//								"plan" => "1415",
+//							),
+//						)
+//					));
+
+				}
 				// 残数管理の場合マイナスする
 				if ( is_numeric( $count ) && intval( $count ) > 0 ) {
 					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
@@ -432,7 +462,8 @@ function stripe_purchase() {
 			Email: " . $email . "
 			カードブランド: " . $card_brand . "
 			No: ****-****-****-" . $card_last4 . "
-			金額: " . $amount . "";
+			金額: " . $amount . "
+			ID: ".$charge_id."";
 
 				$email_subject_for_admin = apply_filters( 'stripe-payment-gti-admin-mail-subject', $email_subject_for_admin );
 				$email_for_admin         = apply_filters( 'stripe-payment-gti-admin-mail-template', $email_for_admin );

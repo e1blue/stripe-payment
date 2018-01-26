@@ -3,11 +3,15 @@
 Plugin Name: Stripe Payment By GTI
 Plugin URI: https://gti.co.jp/
 Description: Stripe Payment.
-Version: 1.0
+Version: 1.1
 Author: Takeshi Satoh@ GTI Inc.
 Author URI: https://gti.co.jp/
 Text Domain: stripe-payment-gti
 Domain Path: /languages/
+ */
+/**
+ * 更新履歴：
+ * 2018/1/26 Charge を作るようにして、Subscribe 指定したら・・・っていう分岐だけ作った。
  */
 define( 'STRIPE_PAYMENT_CONTENT_DIR', ABSPATH . 'wp-content' );
 define( 'STRIPE_PAYMENT_PLUGIN_PARENT_DIR', STRIPE_PAYMENT_CONTENT_DIR . '/plugins' );
