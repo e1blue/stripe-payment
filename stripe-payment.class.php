@@ -32,6 +32,8 @@ class StripePayment extends Singleton {
 			"form"              => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
 			"pay_id"                => "",  // pay_id をつけることにより残カウントを有効化出来る
 			"count"             => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
+			"subscription"         => "",  // 定期課金
+			"interval"          => "",  // Specifies billing frequency. Either day, week, month or year.
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
@@ -39,6 +41,9 @@ class StripePayment extends Singleton {
 		$amount   = $atts['price'];
 		$pay_id   = $atts['pay_id'];
 		$count    = $atts['count'];
+
+		$subscription = $atts['subscription'];
+		$interval  = $atts['interval'];
 
 		if ( $_REQUEST['stripeToken'] ) {
 			/**
@@ -74,6 +79,8 @@ class StripePayment extends Singleton {
 				'amount'                           => esc_attr( $amount ),
 				'pay_id'                           => esc_attr( $pay_id ),
 				'count'                            => esc_attr( $count ),
+				'subscription'                     => esc_attr( $subscription ),
+				'interval'                         => esc_attr( $interval ),
 				'stripeToken'                      => esc_attr( $_REQUEST['stripeToken'] ),
 				'stripeTokenType'                  => esc_attr( $_REQUEST['stripeTokenType'] ),
 				'stripeEmail'                      => esc_attr( $_REQUEST['stripeEmail'] ),
@@ -347,9 +354,13 @@ function stripe_purchase() {
 				$card_brand = $stripeinfo->card->brand;
 				$card_last4 = $stripeinfo->card->last4;
 
+				$use_interval = array( "day", "week", "month", "year" );
 				$status = "";
 				$charge_id = "";
-				if ( !isset( $args['subscribe'] ) ) {
+				$status_message = "";
+				if ( !isset( $args['subscription'] ) && $args['subscription'] == "on" &&
+					!isset( $args['interval'] )  && in_array( $args['interval'], $use_interval )
+				) {
 					$charge = \Stripe\Charge::create(array(
 						"amount" => $amount,
 						"currency" => $currency,
@@ -362,16 +373,49 @@ function stripe_purchase() {
 					}
 
 				} else {
-					// Create Subscription
-//					\Stripe\Subscription::create(array(
-//						"customer" => "cus_CCsx5o2E9efcT8",
-//						"items" => array(
-//							array(
-//								"plan" => "1415",
-//							),
-//						)
-//					));
+					$interval =  $args['interval'];
+					// Create Customer
+					$customer_info["source"] = $token;
+					$customer_info[ 'email' ] = $email;
+					$customer_info[ 'description' ] = $description;
+					$cus_object = \Stripe\Customer::create( $customer_info );
 
+					if ( $description == "" ) {
+						$description = "Stripe Payment: ".$_SERVER['HTTP_REFERER'];
+					}
+
+					// Create Plan
+					$plan = \Stripe\Plan::create(array(
+						"amount" => $amount,
+						// Specifies billing frequency. Either day, week, month or year.
+						"interval" => $interval,
+						"name" => $description,
+						"currency" => $currency
+					));
+
+					// Create Subscription
+					$subscription = \Stripe\Subscription::create(array(
+						"customer" =>$cus_object->id,
+						"items" => array(
+							array(
+								"plan" => $plan->id,
+							),
+						)
+					));
+					$start = $subscription->current_period_start;
+					$start = date( "Y/m/d H:i:s", $start );
+					$start_str = $start;
+					// active 等
+					$status = $subscription->status;
+
+					$interval = $subscription->plan->interval;
+					$interval_count = $subscription->plan->interval_count;
+
+					$status_message = "START AT: ".$start_str." \n";
+					$status_message .= "STATUS: ".$status." \n";
+					$status_message .= "INTERVAL: ".$interval." \n";
+					$status_message .= "INTERVAL_COUNT: ".$interval_count." \n";
+					$status_message .= "ID: ".$subscription->id." \n";
 				}
 				// 残数管理の場合マイナスする
 				if ( is_numeric( $count ) && intval( $count ) > 0 ) {
@@ -462,8 +506,14 @@ function stripe_purchase() {
 			Email: " . $email . "
 			カードブランド: " . $card_brand . "
 			No: ****-****-****-" . $card_last4 . "
-			金額: " . $amount . "
-			ID: ".$charge_id."";
+			金額: " . $amount ."\n";
+				if ( $status_message != "" ) {
+					$email_for_admin .= $status_message;
+				} elseif ( $status != "" ) {
+					$email_for_admin .= "ID: ".$charge_id."\n";
+					$email_for_admin .= "STATUS :".$status;
+				}
+
 
 				$email_subject_for_admin = apply_filters( 'stripe-payment-gti-admin-mail-subject', $email_subject_for_admin );
 				$email_for_admin         = apply_filters( 'stripe-payment-gti-admin-mail-template', $email_for_admin );
@@ -513,10 +563,12 @@ function stripe_purchase() {
 				$this->stripe_error_log( 'Stripe RESULT' );
 
 			} catch ( Exception $e ) {
+				$error_msg  = "処理に失敗しました。<br>";
+				$error_msg .= "------- Exception ------<br>";
 
-				echo "------- Exception ------<br>";
+				$error_msg .= '捕捉した例外: '.  $e->getMessage(). "<br>";
 
-				// echo '捕捉した例外: ',  $e->getMessage(), "\n";
+				echo apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
 				$log = array(
 					'action' => 'stripe',
 					'result' => 'Stripe ERROR:' . $e->getMessage(),
