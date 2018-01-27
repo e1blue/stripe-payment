@@ -46,6 +46,8 @@ class StripePayment extends Singleton {
 		$interval  = $atts['interval'];
 		$description = $atts['description'];
 
+		// 処理後表示HTML
+		$ret_html = "";
 		if ( $_REQUEST['stripeToken'] ) {
 			/**
 			 * array(23) {
@@ -115,7 +117,7 @@ class StripePayment extends Singleton {
 				'stripeShippingAddressState'       => esc_attr( $_REQUEST['stripeShippingAddressState'] )
 				// 送付先住所 都道府県
 			);
-			$this->stripe_order( $args );
+			$ret_html = $this->stripe_order( $args );
 			$_REQUEST = null;
 		}
 		$checkout_btn_text = "";
@@ -138,7 +140,7 @@ class StripePayment extends Singleton {
 
 		$this->stripe_error_log( "purchase: Stripe " );
 
-		$html_str = "";
+		$html_str = $ret_html;
 		if ( $this->new_flg === true ) {
 			$html_str .= "<script>function stripe_payment_loading() {
   jQuery('#stripe_payment_loading').css('display', 'block');
@@ -504,12 +506,13 @@ function stripe_purchase() {
 				$email_for_admin         = get_option( 'stripe_payment_admin_mail' );
 
 				$email_for_admin .= "
-			ご請求先 氏名: " . $billingName . "
-			送付先 氏名: " . $shippingName . "
-			Email: " . $email . "
-			カードブランド: " . $card_brand . "
-			No: ****-****-****-" . $card_last4 . "
-			金額: " . $amount ."\n";
+			".__( 'Billing Name', 'stripe-payment-gti' ) .": ". $billingName /** ご請求先 氏名 */. "
+			".__( 'Shipping Name', 'stripe-payment-gti' ) .": ". $shippingName /** 送付先 氏名 */. "
+			".__( 'Email', 'stripe-payment-gti' ).": ". $email /** メール */. "
+			".__( 'Card Brand', 'stripe-payment-gti' ).": ".$card_brand /** カードブランド */ ."
+			".__( 'Card No', 'stripe-payment-gti' ).": ****-****-****-".$card_last4 /** カード番号 */ ."
+			".__( 'Amount', 'stripe-payment-gti' ).": ".$amount /** 金額 */ ."
+			";
 				if ( $status_message != "" ) {
 					$email_for_admin .= $status_message;
 				} elseif ( $status != "" ) {
@@ -561,7 +564,7 @@ function stripe_purchase() {
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
 
 				$thanks_msg = str_replace( "\n", "<br>", $thanks_msg );
-				echo $thanks_msg;
+				return $thanks_msg;
 
 				$this->stripe_error_log( 'Stripe RESULT' );
 
@@ -571,7 +574,7 @@ function stripe_purchase() {
 
 				$error_msg .= '捕捉した例外: '.  $e->getMessage(). "<br>";
 
-				echo apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
+				return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
 				$log = array(
 					'action' => 'stripe',
 					'result' => 'Stripe ERROR:' . $e->getMessage(),
