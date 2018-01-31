@@ -32,8 +32,15 @@ class StripePayment extends Singleton {
 			"form"              => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
 			"pay_id"                => "",  // pay_id をつけることにより残カウントを有効化出来る
 			"count"             => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
+			// subscription
 			"subscription"         => "",  // 定期課金
+			"coupon"            => "",  // Stripe で作っているクーポン指定
+			"trial_end"         => "",  // タイムスタンプ指定のため秒割
+			"trial_period_days" => "",  // 何日間の指定"
+			// plan
 			"interval"          => "",  // Specifies billing frequency. Either day, week, month or year.
+			"interval_count"    => 1,
+			"plan_id"           => "",  // planの ID 入力で Stripe 登録済みのプランとなる （ subscription, interval は無視される ）
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
@@ -42,13 +49,25 @@ class StripePayment extends Singleton {
 		$pay_id   = $atts['pay_id'];
 		$count    = $atts['count'];
 
+		// 定期購買フラグ "on" で定期となる
 		$subscription = $atts['subscription'];
+		$coupon = $atts['coupon'];
+		$trial_end = $atts['trial_end'];
+		$trial_period_days = $atts['trial_period_days'];
+
+		// プラン指定時は必要ないが新規プランを作成する場合は必須（エラーとなってしまう）
 		$interval  = $atts['interval'];
+		$interval_count = $atts['interval_count'];  // 無指定時には1
+
+		// プラン指定時には必須（新規作成時には interval[, interval_count=1] を指定すること
+		$plan_id   = $atts['plan_id'];
+
+		// 概要（nameとして記録される）
 		$description = $atts['description'];
 
 		// 処理後表示HTML
 		$ret_html = "";
-		if ( $_REQUEST['stripeToken'] ) {
+		if ( isset( $_REQUEST['stripeToken'] ) ) {
 			/**
 			 * array(23) {
 			 * ["action"]=> string(6) "stripe"
@@ -78,43 +97,48 @@ class StripePayment extends Singleton {
 			 */
 			$args = array(
 				'currency'                         => esc_attr( $currency ),
-				'result'                           => esc_attr( $_REQUEST['result'] ),
+				'result'                           => (isset( $_REQUEST['result'] ) ? esc_attr( $_REQUEST['result'] ): ''),
 				'amount'                           => esc_attr( $amount ),
 				'pay_id'                           => esc_attr( $pay_id ),
 				'count'                            => esc_attr( $count ),
 				'subscription'                     => esc_attr( $subscription ),
+				'coupon'                           => esc_attr( $coupon ),
+				'trial_end'                        => esc_attr( $trial_end ),
+				'trial_period_days'                => esc_attr( $trial_period_days ),
 				'interval'                         => esc_attr( $interval ),
+				'interval_count'                   => esc_attr( $interval_count ),
+				'plan_id'                          => esc_attr( $plan_id ),
 				'description'                      => esc_attr( $description ),
-				'stripeToken'                      => esc_attr( $_REQUEST['stripeToken'] ),
-				'stripeTokenType'                  => esc_attr( $_REQUEST['stripeTokenType'] ),
-				'stripeEmail'                      => esc_attr( $_REQUEST['stripeEmail'] ),
-				'stripeBillingName'                => esc_attr( $_REQUEST['stripeBillingName'] ),
+				'stripeToken'                      => (isset( $_REQUEST['stripeToken'] ) ? esc_attr( $_REQUEST['stripeToken'] ) : ''),
+				'stripeTokenType'                  => (isset( $_REQUEST['stripeTokenType'] ) ? esc_attr( $_REQUEST['stripeTokenType'] ) : ''),
+				'stripeEmail'                      => (isset( $_REQUEST['stripeEmail'] ) ? esc_attr( $_REQUEST['stripeEmail'] ) : '' ),
+				'stripeBillingName'                => (isset( $_REQUEST['stripeBillingName'] ) ? esc_attr( $_REQUEST['stripeBillingName'] ) : '' ),
 				// 支払者名
-				'stripeBillingAddressCountry'      => esc_attr( $_REQUEST['stripeBillingAddressCountry'] ),
+				'stripeBillingAddressCountry'      => (isset( $_REQUEST['stripeBillingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountry'] ) : ''),
 				// 国
-				'stripeBillingAddressCountryCode'  => esc_attr( $_REQUEST['stripeBillingAddressCountryCode'] ),
+				'stripeBillingAddressCountryCode'  => (isset( $_REQUEST['stripeBillingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountryCode'] ): '' ),
 				// 国コード
-				'stripeBillingAddressZip'          => esc_attr( $_REQUEST['stripeBillingAddressZip'] ),
+				'stripeBillingAddressZip'          => (isset( $_REQUEST['stripeBillingAddressZip'] ) ? esc_attr( $_REQUEST['stripeBillingAddressZip'] ) : '' ),
 				// 郵便番号
-				'stripeBillingAddressLine1'        => esc_attr( $_REQUEST['stripeBillingAddressLine1'] ),
+				'stripeBillingAddressLine1'        => (isset(  $_REQUEST['stripeBillingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeBillingAddressLine1'] ) : '' ),
 				// 住所1
-				'stripeBillingAddressCity'         => esc_attr( $_REQUEST['stripeBillingAddressCity'] ),
+				'stripeBillingAddressCity'         => (isset( $_REQUEST['stripeBillingAddressCity'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCity'] ): '' ),
 				// 住所 市区町村
-				'stripeBillingAddressState'        => esc_attr( $_REQUEST['stripeBillingAddressState'] ),
+				'stripeBillingAddressState'        => (isset( $_REQUEST['stripeBillingAddressState'] ) ? esc_attr( $_REQUEST['stripeBillingAddressState'] ) : '' ),
 				// 住所 都道府県
-				'stripeShippingName'               => esc_attr( $_REQUEST['stripeShippingName'] ),
+				'stripeShippingName'               => (isset( $_REQUEST['stripeShippingName'] ) ? esc_attr( $_REQUEST['stripeShippingName'] ) : '' ),
 				// 送付先名
-				'stripeShippingAddressCountry'     => esc_attr( $_REQUEST['stripeShippingAddressCountry'] ),
+				'stripeShippingAddressCountry'     => (isset( $_REQUEST['stripeShippingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountry'] ) : '' ),
 				// 送付先国
-				'stripeShippingAddressCountryCode' => esc_attr( $_REQUEST['stripeShippingAddressCountryCode'] ),
+				'stripeShippingAddressCountryCode' => (isset( $_REQUEST['stripeShippingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountryCode'] ) : '' ),
 				// 送付先国コード
-				'stripeShippingAddressZip'         => esc_attr( $_REQUEST['stripeShippingAddressZip'] ),
+				'stripeShippingAddressZip'         => (isset( $_REQUEST['stripeShippingAddressZip'] ) ? esc_attr( $_REQUEST['stripeShippingAddressZip'] ) : '' ),
 				// 送付先郵便番号
-				'stripeShippingAddressLine1'       => esc_attr( $_REQUEST['stripeShippingAddressLine1'] ),
+				'stripeShippingAddressLine1'       => (isset( $_REQUEST['stripeShippingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeShippingAddressLine1'] ) : '' ),
 				// 送付先 住所1
-				'stripeShippingAddressCity'        => esc_attr( $_REQUEST['stripeShippingAddressCity'] ),
+				'stripeShippingAddressCity'        => (isset( $_REQUEST['stripeShippingAddressCity'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCity'] ) : '' ),
 				// 送付先住所 市区町村
-				'stripeShippingAddressState'       => esc_attr( $_REQUEST['stripeShippingAddressState'] )
+				'stripeShippingAddressState'       => (isset( $_REQUEST['stripeShippingAddressState'] ) ? esc_attr( $_REQUEST['stripeShippingAddressState'] ) : '' )
 				// 送付先住所 都道府県
 			);
 			$ret_html = $this->stripe_order( $args );
@@ -364,7 +388,8 @@ function stripe_purchase() {
 				$charge_id = "";
 				$status_message = "";
 				if ( !isset( $args['subscription'] ) && $args['subscription'] == "on" &&
-					!isset( $args['interval'] )  && in_array( $args['interval'], $use_interval )
+					!isset( $args['interval'] )  && in_array( $args['interval'], $use_interval ) &&
+				     !isset( $args['plan_id'] )
 				) {
 					$charge = \Stripe\Charge::create(array(
 						"amount" => $amount,
@@ -379,6 +404,11 @@ function stripe_purchase() {
 
 				} else {
 					$interval =  $args['interval'];
+					$interval_count = intval( $args['interval_count'] ) == 0 ? 1 : intval( $args['interval_count'] );
+
+					$trial_end = $args['trial_end'];
+					$trial_period_days = $args['trial_period_days'];
+					$plan_id = $args['plan_id'];
 					// Create Customer
 					$customer_info["source"] = $token;
 					$customer_info[ 'email' ] = $email;
@@ -390,23 +420,45 @@ function stripe_purchase() {
 					}
 
 					// Create Plan
-					$plan = \Stripe\Plan::create(array(
-						"amount" => $amount,
-						// Specifies billing frequency. Either day, week, month or year.
-						"interval" => $interval,
-						"name" => $description,
-						"currency" => $currency
-					));
+					$plan = null;
+					$subscription = null;
+
+					// Retrieve or Create Plan
+					try {
+						$plan = \Stripe\Plan::retrieve( $plan_id );
+					} catch( Exception $pe) {
+						if ( $pe->getCode() == 0 ) {
+							$plan_args = array();
+							$plan_args['id'] = $plan_id;
+							$plan_args['amount'] = $amount;
+							// Specifies billing frequency. Either day, week, month or year.
+							$plan_args['interval'] = $interval;
+							if ( isset( $interval_count ) ) {
+								$plan_args['interval_count'] = intval( $interval_count );
+							}
+							$plan_args['name'] = $description;
+							$plan_args['currency'] = $currency;
+							$plan = \Stripe\Plan::create( $plan_args );
+						} else {
+							throw $pe;
+						}
+					}
 
 					// Create Subscription
-					$subscription = \Stripe\Subscription::create(array(
-						"customer" =>$cus_object->id,
-						"items" => array(
+					$sub_args['customer'] = $cus_object->id;
+					$sub_args['items'] = array(
 							array(
 								"plan" => $plan->id,
 							),
-						)
-					));
+						);
+					// トライアル期間はあれば設定
+					if ( !empty( $trial_end ) ) {
+						$sub_args['trial_end'] = $trial_end;
+					} elseif ( !empty( $trial_period_days ) ) {
+						$sub_args['trial_period_days'] = $trial_period_days;
+					}
+
+					$subscription = \Stripe\Subscription::create( $sub_args );
 					$start = $subscription->current_period_start;
 					$start = date( "Y/m/d H:i:s", $start );
 					$start_str = $start;
@@ -500,7 +552,11 @@ function stripe_purchase() {
 					$email_subject_for_customer,
 					$email_for_customer
 				);
-
+				if ( $send_mail ) {
+					error_log( "SEND_MAIL result: TRUE ? " );
+				} else {
+					error_log(" SEND MAIL RESULT FAILED");
+				}
 				// for Admin
 				$email_subject_for_admin = get_option( 'stripe_payment_admin_mail_subject' );
 				$email_for_admin         = get_option( 'stripe_payment_admin_mail' );
@@ -573,6 +629,11 @@ function stripe_purchase() {
 				$error_msg .= "------- Exception ------<br>";
 
 				$error_msg .= '捕捉した例外: '.  $e->getMessage(). "<br>";
+//				ob_start();
+//				var_dump( $e );
+//				$var = ob_get_contents();
+//				ob_end_clean();
+//				$error_msg .= "<!--".$var."-->";
 
 				return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
 				$log = array(
