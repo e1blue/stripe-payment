@@ -387,10 +387,10 @@ function stripe_purchase() {
 				$status = "";
 				$charge_id = "";
 				$status_message = "";
-				if ( !isset( $args['subscription'] ) &&
-				     $args['subscription'] != "on" &&
-					!isset( $args['interval'] ) &&
-					!in_array( $args['interval'], $use_interval ) &&
+				if ( !isset( $args['subscription'] ) ||
+				     $args['subscription'] != "on" ||
+					!isset( $args['interval'] ) ||
+					!in_array( $args['interval'], $use_interval ) ||
 				     !isset( $args['plan_id'] )
 				) {
 					$charge = \Stripe\Charge::create(array(
