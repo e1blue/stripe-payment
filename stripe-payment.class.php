@@ -9,6 +9,8 @@
 class StripePayment extends Singleton {
 
 	private $new_flg = true;
+	// 結果 HTML
+	private $result_html = "";
 
 	/**
 	 * 決済ボタン
@@ -21,131 +23,58 @@ class StripePayment extends Singleton {
 
 		//  $payments, $action_flag, $rand, $purchase_disabled
 		$atts = shortcode_atts( array(
-			"price"             => 0,
-			"currency"          => 'jpy',
-			"email"             => '',
-			"checkout_btn_text" => "",
-			"checkout_label_text"   => "",
-			"description"       => "",
-			"address"           => "",  // 住所入力するかパラメータ存在したら ON
-			"ship_address"      => "",  // 送付先住所入力するかパラメータ存在したら　ON
-			"form"              => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
-			"pay_id"                => "",  // pay_id をつけることにより残カウントを有効化出来る
-			"count"             => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
+			"price"               => 0,
+			"currency"            => 'jpy',
+			"email"               => '',
+			"checkout_btn_text"   => "",
+			"checkout_label_text" => "",
+			"description"         => "",
+			"address"             => "",  // 住所入力するかパラメータ存在したら ON
+			"ship_address"        => "",  // 送付先住所入力するかパラメータ存在したら　ON
+			"form"                => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
+			"pay_id"              => "",  // pay_id をつけることにより残カウントを有効化出来る
+			"count"               => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
 			// subscription
-			"subscription"         => "",  // 定期課金
-			"coupon"            => "",  // Stripe で作っているクーポン指定
-			"trial_end"         => "",  // タイムスタンプ指定のため秒割
-			"trial_period_days" => "",  // 何日間の指定"
+			"subscription"        => "",  // 定期課金
+			"coupon"              => "",  // Stripe で作っているクーポン指定
+			"trial_end"           => "",  // タイムスタンプ指定のため秒割
+			"trial_period_days"   => "",  // 何日間の指定"
 			// plan
-			"interval"          => "",  // Specifies billing frequency. Either day, week, month or year.
-			"interval_count"    => 1,
-			"plan_id"           => "",  // planの ID 入力で Stripe 登録済みのプランとなる （ subscription, interval は無視される ）
+			"interval"            => "",  // Specifies billing frequency. Either day, week, month or year.
+			"interval_count"      => 1,
+			"plan_id"             => "",  // planの ID 入力で Stripe 登録済みのプランとなる （ subscription, interval は無視される ）
+			"checkout_id"         => "",  // checkout_id は同画面で複数チェックアウトするときは必須です。
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
 		$currency = $atts['currency'];
 		$amount   = $atts['price'];
-		$pay_id   = $atts['pay_id'];
-		$count    = $atts['count'];
+
+//		$pay_id = $atts['pay_id'];
+//		$count  = $atts['count'];
 
 		// 定期購買フラグ "on" で定期となる
-		$subscription = $atts['subscription'];
-		$coupon = $atts['coupon'];
-		$trial_end = $atts['trial_end'];
-		$trial_period_days = $atts['trial_period_days'];
+//		$subscription      = $atts['subscription'];
+//		$coupon            = $atts['coupon'];
+//		$trial_end         = $atts['trial_end'];
+//		$trial_period_days = $atts['trial_period_days'];
+//
+//		// プラン指定時は必要ないが新規プランを作成する場合は必須（エラーとなってしまう）
+//		$interval       = $atts['interval'];
+//		$interval_count = $atts['interval_count'];  // 無指定時には1
+//
+//		// プラン指定時には必須（新規作成時には interval[, interval_count=1] を指定すること
+//		$plan_id = $atts['plan_id'];
+//
+//		// 概要（nameとして記録される）
+//		$description = $atts['description'];
 
-		// プラン指定時は必要ないが新規プランを作成する場合は必須（エラーとなってしまう）
-		$interval  = $atts['interval'];
-		$interval_count = $atts['interval_count'];  // 無指定時には1
+		$checkout_id = $atts['checkout_id'];
 
-		// プラン指定時には必須（新規作成時には interval[, interval_count=1] を指定すること
-		$plan_id   = $atts['plan_id'];
+		$this->stripe_payment_result( $atts );
 
-		// 概要（nameとして記録される）
-		$description = $atts['description'];
-
-		// 処理後表示HTML
-		$ret_html = "";
-		if ( isset( $_REQUEST['stripeToken'] ) ) {
-			/**
-			 * array(23) {
-			 * ["action"]=> string(6) "stripe"
-			 * ["action_return"]=> string(1) "1"
-			 * ["result"]=> string(1) "1"
-			 * ["amount"]=> string(5) "12000"
-			 * ["sub"]=> string(9) "169238135"
-			 * ["nonce"]=> string(10) "63252b6bfc"
-			 * ["stripeToken"]=> string(28) "tok_1Bb24PFlXz0vpAiv0hhRIdif"
-			 * ["stripeTokenType"]=> string(4) "card"
-			 * ["stripeEmail"]=> string(14) "info@gti.co.jp"
-			 * ["stripeBillingName"]=> string(12) "佐藤　毅"
-			 * ["stripeBillingAddressCountry"]=> string(5) "Japan"
-			 * ["stripeBillingAddressCountryCode"]=> string(2) "JP"
-			 * ["stripeBillingAddressZip"]=> string(8) "810-0041"
-			 * ["stripeBillingAddressLine1"]=> string(24) "福岡市中央区大名"
-			 * ["stripeBillingAddressCity"]=> string(9) "福岡県"
-			 * ["stripeBillingAddressState"]=> string(10) "Fukuokaken"
-			 * ["stripeShippingName"]=> string(12) "佐藤　毅"
-			 * ["stripeShippingAddressCountry"]=> string(5) "Japan"
-			 * ["stripeShippingAddressCountryCode"]=> string(2) "JP"
-			 * ["stripeShippingAddressZip"]=> string(8) "810-0041"
-			 * ["stripeShippingAddressLine1"]=> string(24) "福岡市中央区大名"
-			 * ["stripeShippingAddressCity"]=> string(9) "福岡県"
-			 * ["stripeShippingAddressState"]=> string(10) "Fukuokaken"
-			 * }
-			 */
-			$args = array(
-				'currency'                         => esc_attr( $currency ),
-				'result'                           => (isset( $_REQUEST['result'] ) ? esc_attr( $_REQUEST['result'] ): ''),
-				'amount'                           => esc_attr( $amount ),
-				'pay_id'                           => esc_attr( $pay_id ),
-				'count'                            => esc_attr( $count ),
-				'subscription'                     => esc_attr( $subscription ),
-				'coupon'                           => esc_attr( $coupon ),
-				'trial_end'                        => esc_attr( $trial_end ),
-				'trial_period_days'                => esc_attr( $trial_period_days ),
-				'interval'                         => esc_attr( $interval ),
-				'interval_count'                   => esc_attr( $interval_count ),
-				'plan_id'                          => esc_attr( $plan_id ),
-				'description'                      => esc_attr( $description ),
-				'stripeToken'                      => (isset( $_REQUEST['stripeToken'] ) ? esc_attr( $_REQUEST['stripeToken'] ) : ''),
-				'stripeTokenType'                  => (isset( $_REQUEST['stripeTokenType'] ) ? esc_attr( $_REQUEST['stripeTokenType'] ) : ''),
-				'stripeEmail'                      => (isset( $_REQUEST['stripeEmail'] ) ? esc_attr( $_REQUEST['stripeEmail'] ) : '' ),
-				'stripeBillingName'                => (isset( $_REQUEST['stripeBillingName'] ) ? esc_attr( $_REQUEST['stripeBillingName'] ) : '' ),
-				// 支払者名
-				'stripeBillingAddressCountry'      => (isset( $_REQUEST['stripeBillingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountry'] ) : ''),
-				// 国
-				'stripeBillingAddressCountryCode'  => (isset( $_REQUEST['stripeBillingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountryCode'] ): '' ),
-				// 国コード
-				'stripeBillingAddressZip'          => (isset( $_REQUEST['stripeBillingAddressZip'] ) ? esc_attr( $_REQUEST['stripeBillingAddressZip'] ) : '' ),
-				// 郵便番号
-				'stripeBillingAddressLine1'        => (isset(  $_REQUEST['stripeBillingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeBillingAddressLine1'] ) : '' ),
-				// 住所1
-				'stripeBillingAddressCity'         => (isset( $_REQUEST['stripeBillingAddressCity'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCity'] ): '' ),
-				// 住所 市区町村
-				'stripeBillingAddressState'        => (isset( $_REQUEST['stripeBillingAddressState'] ) ? esc_attr( $_REQUEST['stripeBillingAddressState'] ) : '' ),
-				// 住所 都道府県
-				'stripeShippingName'               => (isset( $_REQUEST['stripeShippingName'] ) ? esc_attr( $_REQUEST['stripeShippingName'] ) : '' ),
-				// 送付先名
-				'stripeShippingAddressCountry'     => (isset( $_REQUEST['stripeShippingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountry'] ) : '' ),
-				// 送付先国
-				'stripeShippingAddressCountryCode' => (isset( $_REQUEST['stripeShippingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountryCode'] ) : '' ),
-				// 送付先国コード
-				'stripeShippingAddressZip'         => (isset( $_REQUEST['stripeShippingAddressZip'] ) ? esc_attr( $_REQUEST['stripeShippingAddressZip'] ) : '' ),
-				// 送付先郵便番号
-				'stripeShippingAddressLine1'       => (isset( $_REQUEST['stripeShippingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeShippingAddressLine1'] ) : '' ),
-				// 送付先 住所1
-				'stripeShippingAddressCity'        => (isset( $_REQUEST['stripeShippingAddressCity'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCity'] ) : '' ),
-				// 送付先住所 市区町村
-				'stripeShippingAddressState'       => (isset( $_REQUEST['stripeShippingAddressState'] ) ? esc_attr( $_REQUEST['stripeShippingAddressState'] ) : '' )
-				// 送付先住所 都道府県
-			);
-			$ret_html = $this->stripe_order( $args );
-			$_REQUEST = null;
-		}
-		$checkout_btn_text = "";
-		$checkout_label_text   = "";
+		$checkout_btn_text   = "";
+		$checkout_label_text = "";
 		if ( isset( $atts['checkout_btn_text'] ) && trim( $atts['checkout_btn_text'] ) != "" ) {
 			$checkout_btn_text = $atts['checkout_btn_text'];
 		}
@@ -158,13 +87,13 @@ class StripePayment extends Singleton {
 		}
 		$loading_gif = get_option( 'stripe_payment_loading_gif', STRIPE_PAYMENT_LOADING_GIF );
 
-		$checkout_btn_text = apply_filters( 'stripe-payment-gti-checkout_btn_text', $checkout_btn_text, $amount );
-		$checkout_label_text   = apply_filters( 'stripe-payment-gti-checkout_label_text', $checkout_label_text, $amount );
-		$loading_gif       = apply_filters( 'stripe_payment_loading_gif', $loading_gif );
+		$checkout_btn_text   = apply_filters( 'stripe-payment-gti-checkout_btn_text', $checkout_btn_text, $amount );
+		$checkout_label_text = apply_filters( 'stripe-payment-gti-checkout_label_text', $checkout_label_text, $amount );
+		$loading_gif         = apply_filters( 'stripe_payment_loading_gif', $loading_gif );
 
 		$this->stripe_error_log( "purchase: Stripe " );
 
-		$html_str = $ret_html;
+		$html_str = "";
 		if ( $this->new_flg === true ) {
 			$html_str .= "<script>function stripe_payment_loading() {
   jQuery('#stripe_payment_loading').css('display', 'block');
@@ -207,7 +136,7 @@ function stripe_purchase() {
 </style>" );
 		}
 		if ( $atts['form'] === "" ) {
-			$html_str .= "<div style='text-align: center;'><form id='purchase_form' action='' method=POST onKeyDown='if (event.keyCode == 13) {return false;}' >";
+			$html_str .= "<div style='text-align: center;'><form id='" . $checkout_id . "' action='' method=POST onKeyDown='if (event.keyCode == 13) {return false;}' >";
 		}
 		if ( $this->new_flg === true ) {
 			$html_str .= "<div id='stripe_payment_loading'><img src='{$loading_gif}' ></div>";
@@ -219,19 +148,21 @@ function stripe_purchase() {
 		$ship_address = $atts['ship_address'];
 		$pay_id       = $atts['pay_id'];
 		$count        = $atts['count'];
+		$checkout_id  = $atts['checkout_id'];
 
 		// チェックアウト表示パラメータ
 		$checkout_args = array(
-			'checkout_label_text'   => $checkout_label_text,
-			'checkout_btn_text' => $checkout_btn_text,
-			'description'       => $description,
-			'price'             => $amount,
-			'email'             => $data_email,
-			'currency'          => $currency,
-			'address'           => $address,
-			'ship_address'      => $ship_address,
-			'pay_id'            => $pay_id,
-			'count'             => $count
+			'checkout_label_text' => $checkout_label_text,
+			'checkout_btn_text'   => $checkout_btn_text,
+			'description'         => $description,
+			'price'               => $amount,
+			'email'               => $data_email,
+			'currency'            => $currency,
+			'address'             => $address,
+			'ship_address'        => $ship_address,
+			'pay_id'              => $pay_id,
+			'count'               => $count,
+			'checkout_id'         => $checkout_id
 		);
 		// 通常決済の場合
 
@@ -239,6 +170,7 @@ function stripe_purchase() {
 
 
 		$html_str .= "
+				<input type='hidden' name='checkout_id' value='" . $checkout_id . "'>
 				<input type='hidden' name='nonce' value='" . wp_create_nonce( $amount ) . "'>";
 		if ( $atts['form'] === "" ) {
 			$html_str .= "</form></div>";
@@ -257,80 +189,245 @@ function stripe_purchase() {
 	function get_stripe_html( $checkout_args ) {
 
 		$html_str = "";
-		$pay_id = $checkout_args['pay_id'];
-		$count  = intval( $checkout_args['count'] ); // 個数 整数でなければNG 数値でないまたはNULLなら0なので利用する
+		$pay_id   = $checkout_args['pay_id'];
+		$count    = intval( $checkout_args['count'] ); // 個数 整数でなければNG 数値でないまたはNULLなら0なので利用する
 
-		$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
-		$zan_count = 0;
+		$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts' ) );
+		$zan_count     = 0;
 		if ( $result_counts ) {
 			if ( array_key_exists( $pay_id, $result_counts ) ) {
-				if ( isset( $result_counts[$pay_id] ) ) {
+				if ( isset( $result_counts[ $pay_id ] ) ) {
 					$zan_count = intval( $result_counts[ $pay_id ] );
 				}
+			} else {
+				$zan_count = $count;
 			}
 		} else {
 			$zan_count = $count;
 		}
-
+		$this->stripe_error_log( "==================== COUNT: " . $count . " ZAN_COUNT: " . $zan_count );
 		if ( $zan_count > 0 || $count == 0 ) {
 
-		$site_name  = get_bloginfo( 'name' );
-		$public_key = get_option( 'stripe_payment_public_key' );
+			$site_name  = get_bloginfo( 'name' );
+			$public_key = get_option( 'stripe_payment_public_key' );
 
-		$checkout_label_text = "";
-		$checkout_btn_text   = "";
-		$amount               = 0;
-		$data_email          = "";
-		$currency            = "";
-		$address_flg         = "false";
-		$ship_address_flg    = "false";
-		if ( $checkout_args !== null && is_array( $checkout_args ) ) {
-			$description         = $checkout_args['description'];
-			$amount               = $checkout_args['price'];
-			$checkout_label_text = sprintf( $checkout_args['checkout_label_text'], $amount );
-			$checkout_btn_text   = sprintf( $checkout_args['checkout_btn_text'], $amount );
-			$data_email          = $checkout_args['email'];
-			$currency            = $checkout_args['currency'];
-			$address_flg         = ( $checkout_args['address'] !== "" ? "true" : "false" );
-			$ship_address_flg    = ( $checkout_args['ship_address'] !== "" ? "true" : "false" );
-		}
+			$checkout_label_text = "";
+			$checkout_btn_text   = "";
+			$amount              = 0;
+			$data_email          = "";
+			$currency            = "";
+			$address_flg         = "false";
+			$ship_address_flg    = "false";
+			$checkout_id         = "";
+			if ( $checkout_args !== null && is_array( $checkout_args ) ) {
+				$checkout_id         = $checkout_args['checkout_id'];
+				$description         = $checkout_args['description'];
+				$amount              = $checkout_args['price'];
+				$checkout_label_text = sprintf( $checkout_args['checkout_label_text'], $amount );
+				$checkout_btn_text   = sprintf( $checkout_args['checkout_btn_text'], $amount );
+				$data_email          = $checkout_args['email'];
+				$currency            = $checkout_args['currency'];
+				$address_flg         = ( $checkout_args['address'] !== "" ? "true" : "false" );
+				$ship_address_flg    = ( $checkout_args['ship_address'] !== "" ? "true" : "false" );
+			}
 
-		if ( $currency == "" ) {
-			$currency = get_option( 'stripe_payment_checkout_currency', 'jpy' );
-		}
+			if ( $currency == "" ) {
+				$currency = get_option( 'stripe_payment_checkout_currency', 'jpy' );
+			}
 
-		$stripe_payment_checkout_img = apply_filters( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
+			$stripe_payment_checkout_img = apply_filters( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
 
-		$html_str .= "<script
-		src='https://checkout.stripe.com/checkout.js' class='stripe-button' 
-		";
-		if ( $address_flg !== "false" ) {
-			$html_str .= "
-		data-billing-address='{$address_flg}'  
-		";
-		}
-		if ( $ship_address_flg !== "false" ) {
-			$html_str .= "
-		data-shipping-address='{$ship_address_flg}' 
-		";
-		}
-		$html_str .= "
-		data-name='{$site_name}'
-		data-amount='{$amount}'
-		data-key='{$public_key}'
-		data-label='{$checkout_btn_text}' 
-		data-description='{$description}' 
-		data-panel-label='{$checkout_label_text}' 
-		data-image='{$stripe_payment_checkout_img}'
-		data-locale='auto' 
-		closed='stripe_purchase' 
-		data-email='{$data_email}'
-		data-allow-remember-me='false'
-		data-currency='{$currency}'></script>";
+			$html_str .= "<script
+			src='https://checkout.stripe.com/checkout.js' class='stripe-button'
+			";
+			if ( $address_flg !== "false" ) {
+				$html_str .= "
+			data-billing-address='{$address_flg}'
+			";
+			}
+			if ( $ship_address_flg !== "false" ) {
+				$html_str .= "
+			data-shipping-address='{$ship_address_flg}'
+			";
+			}
+			$html_str .= " data-name='{$site_name}' ";
+			$html_str .= " data-amount=\"{$amount}\" ";
+			$html_str .= " data-key='{$public_key}' ";
+			$html_str .= " data-label='{$checkout_btn_text}' ";
+			$html_str .= " data-description='{$description}' ";
+			$html_str .= " data-panel-label='{$checkout_label_text}' ";
+			$html_str .= " data-image='{$stripe_payment_checkout_img}' ";
+			$html_str .= " data-locale='auto' ";
+			$html_str .= " closed='stripe_purchase' ";
+			$html_str .= " data-email='{$data_email}' ";
+			$html_str .= " data-allow-remember-me='false' ";
+			$html_str .= " data-currency='{$currency}'></script>";
 		} else {
-			$html_str .= "<p class='stripe-payment-no-item'>".__( 'No Item.', 'stripe-payment-gti' )."</p>";
+			$html_str .= "<p class='stripe-payment-no-item'>" . __( 'No Item.', 'stripe-payment-gti' ) . "</p>";
 		}
+
 		return $html_str;
+	}
+
+	/**
+	 * token から情報取得
+	 */
+	function get_token_info( $token = "" ) {
+		$this->stripe_error_log( "================= get_token_info =========" );
+		$stripeinfo = null;
+		if ( $token != '' ) {    //Stripe
+
+			// 注文処理
+			try {
+
+				// TOKEN ゲット。
+				$secret_key = get_option( 'stripe_payment_secret_key' );
+				$this->stripe_error_log( "================= Stripe Info =========" );
+				$this->stripe_error_log( "SECRET KEY : " . $secret_key );
+				\Stripe\Stripe::setApiKey( $secret_key );
+
+				$stripeinfo = \Stripe\Token::retrieve( $token );
+
+			} catch ( Exception $e ) {
+				$error_msg = "処理に失敗しました。<br>";
+				$error_msg .= "------- Exception ------<br>";
+
+				$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
+
+				return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
+				$log = array(
+					'action' => 'stripe',
+					'result' => 'Stripe ERROR:' . $e->getMessage(),
+					'data'   => $e
+				);
+
+				$this->stripe_error_log( $log );
+			}
+		}
+
+		return $stripeinfo;
+	}
+
+	/**
+	 * 受注処理結果表示ショートコード
+	 */
+	function stripe_payment_result( $atts ) {
+		$ret_html    = "";
+		$checkout_id = $atts['checkout_id'];
+		$this->stripe_error_log( "================= stripe_payment_result_display =========:" . $checkout_id );
+		if ( isset( $_REQUEST['stripeToken'] ) &&
+		     ( empty( $_REQUEST['checkout_id'] ) ||
+		       $checkout_id === $_REQUEST['checkout_id'] ) ) {
+			$this->stripe_error_log( "================= PROCESS =========:" . $checkout_id );
+			/**
+			 * array(23) {
+			 * ["action"]=> string(6) "stripe"
+			 * ["action_return"]=> string(1) "1"
+			 * ["result"]=> string(1) "1"
+			 * ["amount"]=> string(5) "12000"
+			 * ["sub"]=> string(9) "169238135"
+			 * ["nonce"]=> string(10) "63252b6bfc"
+			 * ["stripeToken"]=> string(28) "tok_1Bb24PFlXz0vpAiv0hhRIdif"
+			 * ["stripeTokenType"]=> string(4) "card"
+			 * ["stripeEmail"]=> string(14) "info@gti.co.jp"
+			 * ["stripeBillingName"]=> string(12) "佐藤　毅"
+			 * ["stripeBillingAddressCountry"]=> string(5) "Japan"
+			 * ["stripeBillingAddressCountryCode"]=> string(2) "JP"
+			 * ["stripeBillingAddressZip"]=> string(8) "810-0041"
+			 * ["stripeBillingAddressLine1"]=> string(24) "福岡市中央区大名"
+			 * ["stripeBillingAddressCity"]=> string(9) "福岡県"
+			 * ["stripeBillingAddressState"]=> string(10) "Fukuokaken"
+			 * ["stripeShippingName"]=> string(12) "佐藤　毅"
+			 * ["stripeShippingAddressCountry"]=> string(5) "Japan"
+			 * ["stripeShippingAddressCountryCode"]=> string(2) "JP"
+			 * ["stripeShippingAddressZip"]=> string(8) "810-0041"
+			 * ["stripeShippingAddressLine1"]=> string(24) "福岡市中央区大名"
+			 * ["stripeShippingAddressCity"]=> string(9) "福岡県"
+			 * ["stripeShippingAddressState"]=> string(10) "Fukuokaken"
+			 * }
+			 */
+			$stripeToken = ( isset( $_REQUEST['stripeToken'] ) ? esc_attr( $_REQUEST['stripeToken'] ) : '' );
+			$stripeInfo  = $this->get_token_info( $stripeToken );
+
+			$currency = $atts['currency'];
+
+			$amount            = $atts['price'];   //　ここまでは price で引きずってる
+			$pay_id            = $atts['pay_id'];
+			$count             = $atts['count'];
+			$subscription      = $atts['subscription'];
+			$coupon            = $atts['coupon'];
+			$trial_end         = $atts['trial_end'];
+			$trial_period_days = $atts['trial_period_days'];
+			$interval          = $atts['interval'];
+			$interval_count    = $atts['interval_count'];
+			$plan_id           = $atts['plan_id'];
+			$description       = $atts['description'];
+
+			$args     = array(
+				'checkout_id'                      => esc_attr( $_REQUEST['checkout_id'] ),
+				'currency'                         => esc_attr( $currency ),
+				'result'                           => ( isset( $_REQUEST['result'] ) ? esc_attr( $_REQUEST['result'] ) : '' ),
+				'amount'                           => esc_attr( $amount ),
+				'pay_id'                           => esc_attr( $pay_id ),
+				'count'                            => esc_attr( $count ),
+				'subscription'                     => esc_attr( $subscription ),
+				'coupon'                           => esc_attr( $coupon ),
+				'trial_end'                        => esc_attr( $trial_end ),
+				'trial_period_days'                => esc_attr( $trial_period_days ),
+				'interval'                         => esc_attr( $interval ),
+				'interval_count'                   => esc_attr( $interval_count ),
+				'plan_id'                          => esc_attr( $plan_id ),
+				'description'                      => esc_attr( $description ),
+				'stripeToken'                      => $stripeToken,
+				'stripeTokenType'                  => ( isset( $_REQUEST['stripeTokenType'] ) ? esc_attr( $_REQUEST['stripeTokenType'] ) : '' ),
+				'stripeEmail'                      => ( isset( $_REQUEST['stripeEmail'] ) ? esc_attr( $_REQUEST['stripeEmail'] ) : '' ),
+				'stripeBillingName'                => ( isset( $_REQUEST['stripeBillingName'] ) ? esc_attr( $_REQUEST['stripeBillingName'] ) : '' ),
+				// 支払者名
+				'stripeBillingAddressCountry'      => ( isset( $_REQUEST['stripeBillingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountry'] ) : '' ),
+				// 国
+				'stripeBillingAddressCountryCode'  => ( isset( $_REQUEST['stripeBillingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCountryCode'] ) : '' ),
+				// 国コード
+				'stripeBillingAddressZip'          => ( isset( $_REQUEST['stripeBillingAddressZip'] ) ? esc_attr( $_REQUEST['stripeBillingAddressZip'] ) : '' ),
+				// 郵便番号
+				'stripeBillingAddressLine1'        => ( isset( $_REQUEST['stripeBillingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeBillingAddressLine1'] ) : '' ),
+				// 住所1
+				'stripeBillingAddressCity'         => ( isset( $_REQUEST['stripeBillingAddressCity'] ) ? esc_attr( $_REQUEST['stripeBillingAddressCity'] ) : '' ),
+				// 住所 市区町村
+				'stripeBillingAddressState'        => ( isset( $_REQUEST['stripeBillingAddressState'] ) ? esc_attr( $_REQUEST['stripeBillingAddressState'] ) : '' ),
+				// 住所 都道府県
+				'stripeShippingName'               => ( isset( $_REQUEST['stripeShippingName'] ) ? esc_attr( $_REQUEST['stripeShippingName'] ) : '' ),
+				// 送付先名
+				'stripeShippingAddressCountry'     => ( isset( $_REQUEST['stripeShippingAddressCountry'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountry'] ) : '' ),
+				// 送付先国
+				'stripeShippingAddressCountryCode' => ( isset( $_REQUEST['stripeShippingAddressCountryCode'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCountryCode'] ) : '' ),
+				// 送付先国コード
+				'stripeShippingAddressZip'         => ( isset( $_REQUEST['stripeShippingAddressZip'] ) ? esc_attr( $_REQUEST['stripeShippingAddressZip'] ) : '' ),
+				// 送付先郵便番号
+				'stripeShippingAddressLine1'       => ( isset( $_REQUEST['stripeShippingAddressLine1'] ) ? esc_attr( $_REQUEST['stripeShippingAddressLine1'] ) : '' ),
+				// 送付先 住所1
+				'stripeShippingAddressCity'        => ( isset( $_REQUEST['stripeShippingAddressCity'] ) ? esc_attr( $_REQUEST['stripeShippingAddressCity'] ) : '' ),
+				// 送付先住所 市区町村
+				'stripeShippingAddressState'       => ( isset( $_REQUEST['stripeShippingAddressState'] ) ? esc_attr( $_REQUEST['stripeShippingAddressState'] ) : '' )
+				// 送付先住所 都道府県
+			);
+			$ret_html = $this->stripe_order( $stripeInfo, $args );
+			$_REQUEST = null;
+		}
+		$this->result_html = $ret_html;
+		if ( $ret_html != "" ) {
+			$result_html = str_replace( array( "\r\n", "\r", "\n" ), '', $this->result_html );
+			$result_html = str_replace( "&lt;", "<", $result_html );
+			$result_html = str_replace( "&gt;", ">", $result_html );
+
+			echo "
+				<script>
+				jQuery( function() {
+				    jQuery('#stripe-payment-result-gti').html('{$result_html}');
+				    location.href = \"#stripe-payment-result-gti\";
+				} );
+				</script>
+				";
+		}
 	}
 
 	/**
@@ -338,9 +435,7 @@ function stripe_purchase() {
 	 *
 	 * @param $args Stripe結果パラメータ
 	 */
-	function stripe_order( $args ) {
-
-		$token = $args['stripeToken'];
+	function stripe_order( $stripeInfo = null, $args ) {
 
 		$billingName  = $args['stripeBillingName'];
 		$shippingName = $args['stripeShippingName'];
@@ -358,6 +453,7 @@ function stripe_purchase() {
 		$shipping_address_city         = $args['stripeShippingAddressCity'];
 		$shipping_address_state        = $args['stripeShippingAddressState'];
 
+		$token  = $args['stripeToken'];
 		$amount = $args['amount'];
 		$email  = $args['stripeEmail'];
 		$pay_id = $args['pay_id'];
@@ -367,133 +463,161 @@ function stripe_purchase() {
 
 		$currency = ( isset( $args['currency'] ) ? $args['currency'] : "jpy" );
 
-		if ( $token != '' ) {    //Stripe
+		if ( ! empty( $stripeInfo ) ) {    //Stripe
 
 			// 注文処理
 			try {
 
-				// TOKEN ゲット。
-				$secret_key = get_option( 'stripe_payment_secret_key' );
-				$this->stripe_error_log( "================= Stripe PART 1 =========" );
-				$this->stripe_error_log( "SECRET KEY : " . $secret_key );
-				\Stripe\Stripe::setApiKey( $secret_key );
+				$card_brand = $stripeInfo->card->brand;
+				$card_last4 = $stripeInfo->card->last4;
 
-				$stripeinfo = \Stripe\Token::retrieve( $token );
-
-				$card_brand = $stripeinfo->card->brand;
-				$card_last4 = $stripeinfo->card->last4;
-
-				$use_interval = array( "day", "week", "month", "year" );
-				$status = "";
-				$charge_id = "";
+				$use_interval   = array( "day", "week", "month", "year" );
+				$status         = "";
+				$charge_id      = "";
 				$status_message = "";
-				if ( !isset( $args['subscription'] ) ||
+				if ( ! isset( $args['subscription'] ) ||
 				     $args['subscription'] != "on" ||
-					!isset( $args['interval'] ) ||
-					!in_array( $args['interval'], $use_interval ) ||
-				     !isset( $args['plan_id'] )
+				     ! isset( $args['interval'] ) ||
+				     ! in_array( $args['interval'], $use_interval ) ||
+				     ! isset( $args['plan_id'] )
 				) {
-					$charge = \Stripe\Charge::create(array(
-						"amount" => $amount,
-						"currency" => $currency,
-						"description" => $description,
-						"source" => $token,
-						));
-					$status = $charge->status; // succeeded で成功
-					if ( "succeeded" == $status ) {
-						$charge_id = $charge->id;
-					}
+					try {
+						$charge = \Stripe\Charge::create( array(
+							"amount"        => $amount,
+							"currency"      => $currency,
+							"description"   => $description,
+							"receipt_email" => $email,
+							"source"        => $token,
+						) );
+						$status = $charge->status; // succeeded で成功
+						if ( "succeeded" == $status ) {
+							$charge_id = $charge->id;
+						}
+					} catch ( Exctption $e1 ) {
+						$error_msg = "Charge 処理に失敗しました。<br>";
+						$error_msg .= "------- Exception ------<br>";
 
+						$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
+						$log       = array(
+							'action' => 'stripe',
+							'result' => 'Stripe ERROR:' . $e->getMessage(),
+							'data'   => $e
+						);
+
+						$this->stripe_error_log( $log );
+
+						return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
+					}
 				} else {
-					$interval =  $args['interval'];
+					$interval       = $args['interval'];
 					$interval_count = intval( $args['interval_count'] ) == 0 ? 1 : intval( $args['interval_count'] );
 
-					$trial_end = $args['trial_end'];
+					$trial_end         = $args['trial_end'];
 					$trial_period_days = $args['trial_period_days'];
-					$plan_id = $args['plan_id'];
+					$plan_id           = $args['plan_id'];
 					// Create Customer
-					$customer_info["source"] = $token;
-					$customer_info[ 'email' ] = $email;
-					$customer_info[ 'description' ] = $description;
-					$cus_object = \Stripe\Customer::create( $customer_info );
+					$customer_info["source"]      = $token;
+					$customer_info['email']       = $email;
+					$customer_info['description'] = $description;
 
+					try {
+						$cus_object = \Stripe\Customer::create( $customer_info );
+					} catch ( Exctption $e1 ) {
+						$error_msg = "Customer 処理に失敗しました。<br>";
+						$error_msg .= "------- Exception ------<br>";
+
+						$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
+						$log       = array(
+							'action' => 'stripe',
+							'result' => 'Stripe ERROR:' . $e->getMessage(),
+							'data'   => $e
+						);
+
+						$this->stripe_error_log( $log );
+
+						return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
+					}
 					if ( $description == "" ) {
-						$description = "Stripe Payment: ".$_SERVER['HTTP_REFERER'];
+						$description = "Stripe Payment: " . $_SERVER['HTTP_REFERER'];
 					}
 
 					// Create Plan
-					$plan = null;
+					$plan         = null;
 					$subscription = null;
 
 					// Retrieve or Create Plan
 					try {
 						$plan = \Stripe\Plan::retrieve( $plan_id );
-					} catch( Exception $pe) {
+					} catch ( Exception $pe ) {
 						if ( $pe->getCode() == 0 ) {
-							$plan_args = array();
-							$plan_args['id'] = $plan_id;
+							$plan_args           = array();
+							$plan_args['id']     = $plan_id;
 							$plan_args['amount'] = $amount;
 							// Specifies billing frequency. Either day, week, month or year.
 							$plan_args['interval'] = $interval;
 							if ( isset( $interval_count ) ) {
 								$plan_args['interval_count'] = intval( $interval_count );
 							}
-							$plan_args['name'] = $description;
+							$plan_args['name']     = $description;
 							$plan_args['currency'] = $currency;
-							$plan = \Stripe\Plan::create( $plan_args );
+							$plan                  = \Stripe\Plan::create( $plan_args );
 						} else {
+							$this->stripe_error_log( "--- Exception: Stripe Plan ----" );
 							throw $pe;
 						}
 					}
-
 					// Create Subscription
 					$sub_args['customer'] = $cus_object->id;
-					$sub_args['items'] = array(
-							array(
-								"plan" => $plan->id,
-							),
-						);
+					$sub_args['items']    = array(
+						array(
+							"plan" => $plan->id,
+						),
+					);
 					// トライアル期間はあれば設定
-					if ( !empty( $trial_end ) ) {
+					if ( ! empty( $trial_end ) ) {
 						$sub_args['trial_end'] = $trial_end;
-					} elseif ( !empty( $trial_period_days ) ) {
+					} elseif ( ! empty( $trial_period_days ) ) {
 						$sub_args['trial_period_days'] = $trial_period_days;
 					}
 
 					$subscription = \Stripe\Subscription::create( $sub_args );
-					$start = $subscription->current_period_start;
-					$start = date( "Y/m/d H:i:s", $start );
-					$start_str = $start;
+					$start        = $subscription->current_period_start;
+					$start        = date( "Y/m/d H:i:s", $start );
+					$start_str    = $start;
 					// active 等
 					$status = $subscription->status;
 
-					$interval = $subscription->plan->interval;
+					$interval       = $subscription->plan->interval;
 					$interval_count = $subscription->plan->interval_count;
 
-					$status_message = "START AT: ".$start_str." \n";
-					$status_message .= "STATUS: ".$status." \n";
-					$status_message .= "INTERVAL: ".$interval." \n";
-					$status_message .= "INTERVAL_COUNT: ".$interval_count." \n";
-					$status_message .= "ID: ".$subscription->id." \n";
+					$status_message = "START AT: " . $start_str . " \n";
+					$status_message .= "STATUS: " . $status . " \n";
+					$status_message .= "INTERVAL: " . $interval . " \n";
+					$status_message .= "INTERVAL_COUNT: " . $interval_count . " \n";
+					$status_message .= "ID: " . $subscription->id . " \n";
 				}
 				// 残数管理の場合マイナスする
+				$this->stripe_error_log( "==================== COUNT: " . $count );
 				if ( is_numeric( $count ) && intval( $count ) > 0 ) {
-					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
+					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts' ) );
 					if ( $result_counts ) {
 						if ( array_key_exists( $pay_id, $result_counts ) ) {
-							$zan_count = $result_counts[$pay_id];
+							$zan_count = $result_counts[ $pay_id ];
 							if ( $zan_count > 0 ) {
-								$result_counts[$pay_id] = $zan_count - 1;
+								$result_counts[ $pay_id ] = $zan_count - 1;
 							}
+						} else {
+							$zan_count                = intval( $count ) - 1;
+							$result_counts[ $pay_id ] = $zan_count;
 						}
 					} else {
-						$zan_count = intval( $count ) - 1;
-						$result_counts = array();
+						$zan_count                = intval( $count ) - 1;
+						$result_counts            = array();
 						$result_counts[ $pay_id ] = $zan_count;
 					}
 
 				} else {
-					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts') );
+					$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts' ) );
 					if ( $result_counts ) {
 						if ( array_key_exists( $pay_id, $result_counts ) ) {
 							unset( $result_counts[ $pay_id ] );
@@ -505,12 +629,13 @@ function stripe_purchase() {
 				$serial_data = serialize( $result_counts );
 
 				update_option( 'stripe-payment_result-counts', $serial_data );
-
+				$this->stripe_error_log( " ===== == == === === =============== = " );
 				// メール送信
 				// メール
 
 				// テンプレート変換
 				$replace_array = array(
+					'description'                   => $description,
 					'billing_name'                  => $billingName,
 					'shipping_name'                 => $shippingName,
 					'email'                         => $email,
@@ -554,28 +679,28 @@ function stripe_purchase() {
 					$email_subject_for_customer,
 					$email_for_customer
 				);
-				if ( $send_mail ) {
-					error_log( "SEND_MAIL result: TRUE ? " );
-				} else {
-					error_log(" SEND MAIL RESULT FAILED");
-				}
+//				if ( $send_mail ) {
+//					error_log( "SEND_MAIL result: TRUE ? " );
+//				} else {
+//					error_log(" SEND MAIL RESULT FAILED");
+//				}
 				// for Admin
 				$email_subject_for_admin = get_option( 'stripe_payment_admin_mail_subject' );
 				$email_for_admin         = get_option( 'stripe_payment_admin_mail' );
 
 				$email_for_admin .= "
-			".__( 'Billing Name', 'stripe-payment-gti' ) .": ". $billingName /** ご請求先 氏名 */. "
-			".__( 'Shipping Name', 'stripe-payment-gti' ) .": ". $shippingName /** 送付先 氏名 */. "
-			".__( 'Email', 'stripe-payment-gti' ).": ". $email /** メール */. "
-			".__( 'Card Brand', 'stripe-payment-gti' ).": ".$card_brand /** カードブランド */ ."
-			".__( 'Card No', 'stripe-payment-gti' ).": ****-****-****-".$card_last4 /** カード番号 */ ."
-			".__( 'Amount', 'stripe-payment-gti' ).": ".$amount /** 金額 */ ."
+			" . __( 'Billing Name', 'stripe-payment-gti' ) . ": " . $billingName /** ご請求先 氏名 */ . "
+			" . __( 'Shipping Name', 'stripe-payment-gti' ) . ": " . $shippingName /** 送付先 氏名 */ . "
+			" . __( 'Email', 'stripe-payment-gti' ) . ": " . $email /** メール */ . "
+			" . __( 'Card Brand', 'stripe-payment-gti' ) . ": " . $card_brand /** カードブランド */ . "
+			" . __( 'Card No', 'stripe-payment-gti' ) . ": ****-****-****-" . $card_last4 /** カード番号 */ . "
+			" . __( 'Amount', 'stripe-payment-gti' ) . ": " . $amount /** 金額 */ . "
 			";
 				if ( $status_message != "" ) {
 					$email_for_admin .= $status_message;
 				} elseif ( $status != "" ) {
-					$email_for_admin .= "ID: ".$charge_id."\n";
-					$email_for_admin .= "STATUS :".$status;
+					$email_for_admin .= "ID: " . $charge_id . "\n";
+					$email_for_admin .= "STATUS :" . $status;
 				}
 
 
@@ -622,15 +747,16 @@ function stripe_purchase() {
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
 
 				$thanks_msg = str_replace( "\n", "<br>", $thanks_msg );
+
 				return $thanks_msg;
 
 				$this->stripe_error_log( 'Stripe RESULT' );
 
 			} catch ( Exception $e ) {
-				$error_msg  = "処理に失敗しました。<br>";
+				$error_msg = "stripe_order 処理に失敗しました。<br>";
 				$error_msg .= "------- Exception ------<br>";
 
-				$error_msg .= '捕捉した例外: '.  $e->getMessage(). "<br>";
+				$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
 //				ob_start();
 //				var_dump( $e );
 //				$var = ob_get_contents();
@@ -666,6 +792,13 @@ function stripe_purchase() {
 		$result = wp_mail( $to, $subject, $body );
 
 		return $result;
+	}
+
+	/**
+	 * 結果表示
+	 */
+	function stripe_payment_result_display() {
+		return "<span id='stripe-payment-result-gti'></span>";
 	}
 
 	/**
