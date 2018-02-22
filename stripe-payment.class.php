@@ -487,6 +487,7 @@ function stripe_purchase() {
 							"currency"      => $currency,
 							"description"   => $description,
 							"receipt_email" => $email,
+							"metadata" => array("email" => $email),
 							"source"        => $token,
 						) );
 						$status = $charge->status; // succeeded で成功
