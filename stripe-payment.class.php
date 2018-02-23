@@ -5,6 +5,7 @@
  * Date: 2017/12/28
  * Time: 9:18
  */
+define( 'STRIPE_PAYMENT_RESULT_ID', "stripe-payment-result-gti" );
 
 class StripePayment extends Singleton {
 
@@ -419,14 +420,18 @@ function stripe_purchase() {
 			$result_html = str_replace( "&lt;", "<", $result_html );
 			$result_html = str_replace( "&gt;", ">", $result_html );
 
-			echo "
+			if ( empty( $_REQUEST['checkout_id'] ) ) {
+				echo $result_html;
+			} else {
+				echo "
 				<script>
 				jQuery( function() {
-				    jQuery('#stripe-payment-result-gti').html('{$result_html}');
-				    location.href = \"#stripe-payment-result-gti\";
+			        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
+			        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
 				} );
 				</script>
 				";
+			}
 		}
 	}
 
@@ -459,7 +464,7 @@ function stripe_purchase() {
 		$pay_id = $args['pay_id'];
 		$count  = $args['count'];
 
-		$description = ( isset( $args['description'] ) ? $args['description'] : "" );
+		$description = ( isset( $args['description'] ) ? $args['description'] : $args['name'] );
 
 		$currency = ( isset( $args['currency'] ) ? $args['currency'] : "jpy" );
 
@@ -498,11 +503,11 @@ function stripe_purchase() {
 						$error_msg = "Charge 処理に失敗しました。<br>";
 						$error_msg .= "------- Exception ------<br>";
 
-						$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
+						$error_msg .= '捕捉した例外: ' . $e1->getMessage() . "<br>";
 						$log       = array(
 							'action' => 'stripe',
-							'result' => 'Stripe ERROR:' . $e->getMessage(),
-							'data'   => $e
+							'result' => 'Stripe ERROR:' . $e1->getMessage(),
+							'data'   => $e1
 						);
 
 						$this->stripe_error_log( $log );
@@ -516,10 +521,13 @@ function stripe_purchase() {
 					$trial_end         = $args['trial_end'];
 					$trial_period_days = $args['trial_period_days'];
 					$plan_id           = $args['plan_id'];
+					if ( empty( $plan_id ) ) {
+						$plan_id = ( $description != "" ? $description : $billingName );
+					}
+
 					// Create Customer
 					$customer_info["source"]      = $token;
 					$customer_info['email']       = $email;
-					$customer_info['description'] = $description;
 
 					try {
 						$cus_object = \Stripe\Customer::create( $customer_info );
@@ -527,11 +535,11 @@ function stripe_purchase() {
 						$error_msg = "Customer 処理に失敗しました。<br>";
 						$error_msg .= "------- Exception ------<br>";
 
-						$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
+						$error_msg .= '捕捉した例外: ' . $e1->getMessage() . "<br>";
 						$log       = array(
 							'action' => 'stripe',
-							'result' => 'Stripe ERROR:' . $e->getMessage(),
-							'data'   => $e
+							'result' => 'Stripe ERROR:' . $e1->getMessage(),
+							'data'   => $e1
 						);
 
 						$this->stripe_error_log( $log );
@@ -559,7 +567,9 @@ function stripe_purchase() {
 							if ( isset( $interval_count ) ) {
 								$plan_args['interval_count'] = intval( $interval_count );
 							}
-							$plan_args['name']     = $description;
+							$plan_args['product'] = array(
+								'name' => $description
+							);
 							$plan_args['currency'] = $currency;
 							$plan                  = \Stripe\Plan::create( $plan_args );
 						} else {
@@ -799,7 +809,7 @@ function stripe_purchase() {
 	 * 結果表示
 	 */
 	function stripe_payment_result_display() {
-		return "<span id='stripe-payment-result-gti'></span>";
+		return "<span id='{STRIPE_PAYMENT_RESULT_ID}'></span>";
 	}
 
 	/**
