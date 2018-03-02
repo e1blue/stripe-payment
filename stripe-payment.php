@@ -3,7 +3,7 @@
 Plugin Name: Stripe Payment By GTI
 Plugin URI: https://gti.co.jp/
 Description: Stripe Payment.
-Version: 1.2.1
+Version: 1.3
 Author: Takeshi Satoh@ GTI Inc.
 Author URI: https://gti.co.jp/
 Text Domain: stripe-payment-gti
@@ -11,6 +11,7 @@ Domain Path: /languages/
  */
 /**
  * 更新履歴：
+ * 2018/3/2  クーポンコード実装（定期課金） Stripeにて設定ずみのもの
  * 2018/2/22 決済ボタン複数対応　及び　決済結果表示場所を指定出来るショートコード追加（必須で貼る必要あり）
  *           通常購入の場合に領収書用メールとは別に保管しないため metadata に入れるようにした（後に機能化する）
  * 2018/1/26 Charge を作るようにして、Subscribe 指定したら・・・っていう分岐だけ作った。

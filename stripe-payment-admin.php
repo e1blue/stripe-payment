@@ -8,7 +8,18 @@ class StripePaymentSetting {   // 管理画面
 
 		add_action( 'admin_menu', array( $this, 'add_pages' ) );
 
-
+		/**
+		 * autoloading modules
+		 */
+		$includes = array(
+		        '/vendor',
+    			'/module',
+		);
+		foreach ( $includes as $include ) {
+			foreach ( glob( __DIR__ . $include . '/*.php' ) as $file ) {
+				require_once( $file );
+			}
+		}
 	}
 
 	function add_pages() {
@@ -216,31 +227,52 @@ class StripePaymentSetting {   // 管理画面
                                value="<?php echo $stripe_payment_loading_gif; ?>"/></td>
                 </tr>
 
-                <tr>
-                    <th scope="row"><label for="input_stripe_payment_item_count_by_payid"><?php _e( 'Stripe Item Result Count', 'stripe-payment-gti' ); ?></label></th>
-                    <td>
-                        <?php
-                        $result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts', "" ) );
-                        if ( $result_counts && is_array( $result_counts ) && count( $result_counts ) > 0 ) {
-                            foreach ( $result_counts as $key=>$val ) {
-                                echo $key." = ".$val."<br>";
-                            }
-                        }
-
-                        ?>
-                    </td>
-                </tr>
             </table>
 
             <input name="usces_option_update" type="submit" class="button button-primary"
                    value="<?php _e( 'Update settings', 'stripe-payment-gti' ); ?>"/>
 			<?php wp_nonce_field( 'admin_settlement', 'wc_nonce' ); ?>
         </form>
+        <table>
+            <tr>
+                <th scope="row"><label for="input_stripe_payment_item_count_by_payid"><?php _e( 'Stripe Item Result Count', 'stripe-payment-gti' ); ?></label></th>
+                <td>
+			        <?php
+			        $result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts', "" ) );
+			        if ( $result_counts && is_array( $result_counts ) && count( $result_counts ) > 0 ) {
+				        ?>
+                        <table>
+                            <tr>
+                                <th>項目名</th>
+                                <th>残数</th>
+                                <th></th>
+                            </tr>
+					        <?php
+					        foreach ( $result_counts as $key=>$val ) {
+						        ?>
+                                <tr>
+                                    <th><?php echo $key; ?><input type="hidden" name="key" value="<?php echo $key; ?>"></th>
+                                    <td><?php echo $val; ?></td>
+                                    <td><button id="result_count_<?php echo $key; ?>">残数設定</button></td>
+                                </tr>
+						        <?php
+					        }
+					        ?>
+                        </table>
+				        <?php
+			        }
+
+			        ?>
+                </td>
+            </tr>
+
+        </table>
         <div class="settle_exp">
             <a href="https://stripe.com/"
                target="_blank"><?php _e( 'Details of Stripe service are here', 'stripe-payment-gti' ); ?> 》</a>
         </div>
         </div><!-- /uscestabs_stripe -->
+        <br clear="all" >
 		<?php
 	}
 
@@ -255,6 +287,24 @@ function stripe_admin_add_my_ajaxurl() {
 	?>
     <script>
         var ajaxurl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
+        jQuery( function () {
+        jQuery("[id^=result_count_]").on("click",function(){
+            console.log(jQuery(this).attr("id"));
+
+            jQuery.ajax({
+                type: 'POST',
+                url: ajaxurl,
+                data: {
+                    'action' : 'view_mes',
+                    'mes' : mes,
+                },
+                success: function( response ){
+                    alert( response );
+                }
+            });
+            return false;
+        });
+        });
     </script>
 	<?php
 }

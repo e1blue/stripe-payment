@@ -56,7 +56,7 @@ class StripePayment extends Singleton {
 
 		// 定期購買フラグ "on" で定期となる
 //		$subscription      = $atts['subscription'];
-//		$coupon            = $atts['coupon'];
+		$coupon            = $atts['coupon'];
 //		$trial_end         = $atts['trial_end'];
 //		$trial_period_days = $atts['trial_period_days'];
 //
@@ -166,7 +166,12 @@ function stripe_purchase() {
 			'checkout_id'         => $checkout_id
 		);
 		// 通常決済の場合
-
+		if ( $coupon == "on" ) {
+			$coupon_input_text = apply_filters( 'stripe-payment-gti-coupon_input_label', __( "Coupon Code", 'stripe-payment-gti' ) );
+			$html_str .= "
+			{$coupon_input_text}: <input type='text' name='stripe-coupon' value=''><br>
+			";
+		}
 		$html_str .= $this->get_stripe_html( $checkout_args );
 
 
@@ -357,6 +362,10 @@ function stripe_purchase() {
 			$count             = $atts['count'];
 			$subscription      = $atts['subscription'];
 			$coupon            = $atts['coupon'];
+			$coupon_code       = "";
+			if ( $coupon == "on" ) {
+				$coupon_code = esc_attr( $_REQUEST['stripe-coupon'] );
+			}
 			$trial_end         = $atts['trial_end'];
 			$trial_period_days = $atts['trial_period_days'];
 			$interval          = $atts['interval'];
@@ -372,7 +381,7 @@ function stripe_purchase() {
 				'pay_id'                           => esc_attr( $pay_id ),
 				'count'                            => esc_attr( $count ),
 				'subscription'                     => esc_attr( $subscription ),
-				'coupon'                           => esc_attr( $coupon ),
+				'coupon_code'                      => esc_attr( $coupon_code ),
 				'trial_end'                        => esc_attr( $trial_end ),
 				'trial_period_days'                => esc_attr( $trial_period_days ),
 				'interval'                         => esc_attr( $interval ),
@@ -492,7 +501,7 @@ function stripe_purchase() {
 							"currency"      => $currency,
 							"description"   => $description,
 							"receipt_email" => $email,
-							"metadata" => array("email" => $email),
+							"metadata"      => array( "email" => $email ),
 							"source"        => $token,
 						) );
 						$status = $charge->status; // succeeded で成功
@@ -521,13 +530,16 @@ function stripe_purchase() {
 					$trial_end         = $args['trial_end'];
 					$trial_period_days = $args['trial_period_days'];
 					$plan_id           = $args['plan_id'];
+
+					$coupon_code = $args['coupon_code'];
+
 					if ( empty( $plan_id ) ) {
 						$plan_id = ( $description != "" ? $description : $billingName );
 					}
 
 					// Create Customer
-					$customer_info["source"]      = $token;
-					$customer_info['email']       = $email;
+					$customer_info["source"] = $token;
+					$customer_info['email']  = $email;
 
 					try {
 						$cus_object = \Stripe\Customer::create( $customer_info );
@@ -567,7 +579,7 @@ function stripe_purchase() {
 							if ( isset( $interval_count ) ) {
 								$plan_args['interval_count'] = intval( $interval_count );
 							}
-							$plan_args['product'] = array(
+							$plan_args['product']  = array(
 								'name' => $description
 							);
 							$plan_args['currency'] = $currency;
@@ -591,7 +603,13 @@ function stripe_purchase() {
 						$sub_args['trial_period_days'] = $trial_period_days;
 					}
 
+					// クーポンがあれば設定（ Stripe で設定済みのもの ）
+					if ( ! empty( $coupon_code ) ) {
+						$sub_args['coupon'] = $coupon_code;
+					}
+
 					$subscription = \Stripe\Subscription::create( $sub_args );
+
 					$start        = $subscription->current_period_start;
 					$start        = date( "Y/m/d H:i:s", $start );
 					$start_str    = $start;
@@ -601,11 +619,41 @@ function stripe_purchase() {
 					$interval       = $subscription->plan->interval;
 					$interval_count = $subscription->plan->interval_count;
 
+					$coupon_result = "";
+
+					if ( ! empty( $subscription->discount ) ) {
+						$coupon_result .= "COUPON: " . $subscription->discount->coupon->id . " \n";
+						$amount_off    = $subscription->discount->coupon->amount_off;
+						$percent_off   = $subscription->discount->coupon->percent_off;
+						// 有効期間・期限・回数   repeating or forever or once
+						$duration = $subscription->discount->coupon->duration;
+						// 回数の場合
+						$duration_in_months = $subscription->discount->coupon->duration_in_months;
+						switch ( $duration ) {
+							case "repeating":
+								$coupon_result .= "クーポン割引月数:" . $duration_in_months . "\n";
+								break;
+							case "forever":
+								$coupon_result .= "クーポン割引: 永久 \n";
+								break;
+							case "once":
+								$coupon_result .= "クーポン割引: 1回目のみ \n";
+
+						}
+						if ( null != $amount_off ) {
+							$coupon_result .= "AMOUNT OFF: " . $amount_off . " \n";
+						} elseif ( null != $percent_off ) {
+							$coupon_result .= "PERCENT OFF: " . $percent_off . " \n";
+						}
+
+					}
+
 					$status_message = "START AT: " . $start_str . " \n";
 					$status_message .= "STATUS: " . $status . " \n";
 					$status_message .= "INTERVAL: " . $interval . " \n";
 					$status_message .= "INTERVAL_COUNT: " . $interval_count . " \n";
 					$status_message .= "ID: " . $subscription->id . " \n";
+					$status_message .= $coupon_result;
 				}
 				// 残数管理の場合マイナスする
 				$this->stripe_error_log( "==================== COUNT: " . $count );
@@ -640,10 +688,8 @@ function stripe_purchase() {
 				$serial_data = serialize( $result_counts );
 
 				update_option( 'stripe-payment_result-counts', $serial_data );
-				$this->stripe_error_log( " ===== == == === === =============== = " );
-				// メール送信
-				// メール
 
+				// メール送信
 				// テンプレート変換
 				$replace_array = array(
 					'description'                   => $description,
@@ -753,6 +799,8 @@ function stripe_purchase() {
 						$thanks_msg = str_replace( "{" . $key . "}", $val, $thanks_msg );
 					}
 				}
+
+				$thanks_msg .= str_replace( "\n", "<br>", $coupon_result );
 
 				// オプション処理
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
