@@ -20,6 +20,15 @@ class StripePaymentSetting {   // 管理画面
 				require_once( $file );
 			}
 		}
+
+		add_action( 'wp_ajax_reset_count', array( $this, 'reset_item_counter' ) );
+		add_action( 'wp_ajax_nopriv_reset_count', array( $this, 'reset_item_counter' ) );
+
+
+		/**
+		 * 管理画面の「Wordpressのご利用ありがとうございます。」の文言を削除
+		 */
+		add_filter('admin_footer_text', '__return_empty_string');
 	}
 
 	function add_pages() {
@@ -253,7 +262,7 @@ class StripePaymentSetting {   // 管理画面
                                 <tr>
                                     <th><?php echo $key; ?><input type="hidden" name="key" value="<?php echo $key; ?>"></th>
                                     <td><?php echo $val; ?></td>
-                                    <td><button id="result_count_<?php echo $key; ?>">残数設定</button></td>
+                                    <td><input type="number" id="set_result_count_<?php echo $key; ?>" value=""><button id="result_count_<?php echo $key; ?>">残数設定</button></td>
                                 </tr>
 						        <?php
 					        }
@@ -272,8 +281,67 @@ class StripePaymentSetting {   // 管理画面
                target="_blank"><?php _e( 'Details of Stripe service are here', 'stripe-payment-gti' ); ?> 》</a>
         </div>
         </div><!-- /uscestabs_stripe -->
-        <br clear="all" >
+        <script>
+            var ajaxurl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
+            jQuery( function () {
+                jQuery("[id^=result_count_]").on("click",function(){
+                    reset_key = jQuery(this).attr("id");
+                    reset_cnt = jQuery("#set_"+reset_key).val();
+                    jQuery.ajax({
+                        type: 'POST',
+                        url: ajaxurl,
+                        data: {
+                            'action' : 'reset_count',
+                            'mes' : reset_key,
+                            'cnt' : reset_cnt,
+                        },
+                        success: function( response ){
+                            if ( response.length > 1 ) {
+                                response = response.substring(0, response.length - 1);
+                            }
+                            alert( response );
+                        }
+                    });
+                    return false;
+                });
+            });
+        </script>
 		<?php
+	}
+
+	/**
+     * 在庫数調整
+     */
+	function reset_item_counter(){
+	    // POSTデータからキー取得
+        $reset_key = esc_attr( $_POST['mes'] );
+        if ( strlen( $reset_key ) > 0 ) {
+            $reset_key = substr( $reset_key, strlen( "result_count_" ), strlen( $reset_key ) );
+        }
+        $reset_cnt = esc_attr( $_POST['cnt'] );
+
+        // カウンターリセット
+        $reset_array = array();
+		$result_counts = maybe_unserialize( get_option( 'stripe-payment_result-counts', "" ) );
+		$change_flg = false;
+		if ( $result_counts && is_array( $result_counts ) && count( $result_counts ) > 0 ) {
+            foreach ( $result_counts as $key=>$val ) {
+                if ( $key === $reset_key ) {
+                    $reset_array[ $key ] = $reset_cnt;
+                    $change_flg = true;
+                } else {
+                    $reset_array[ $key ] = $val;
+                }
+            }
+		}
+		if ( $change_flg === true ) {
+			$serial_data = serialize( $reset_array );
+
+			update_option( 'stripe-payment_result-counts', $serial_data );
+			echo "RESET : ".$reset_key." => ".$reset_cnt." Saved.";
+		} else {
+			echo "Not Save.".$reset_key." ---- ".get_option( 'stripe-payment_result-counts', "" );
+		}
 	}
 
 }
@@ -283,30 +351,3 @@ if ( is_admin() ) {
 
 }
 
-function stripe_admin_add_my_ajaxurl() {
-	?>
-    <script>
-        var ajaxurl = '<?php echo admin_url( 'admin-ajax.php' ); ?>';
-        jQuery( function () {
-        jQuery("[id^=result_count_]").on("click",function(){
-            console.log(jQuery(this).attr("id"));
-
-            jQuery.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                data: {
-                    'action' : 'view_mes',
-                    'mes' : mes,
-                },
-                success: function( response ){
-                    alert( response );
-                }
-            });
-            return false;
-        });
-        });
-    </script>
-	<?php
-}
-
-add_action( 'wp_head', 'stripe_admin_add_my_ajaxurl', 1 );

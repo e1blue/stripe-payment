@@ -495,13 +495,17 @@ function stripe_purchase() {
 				     ! in_array( $args['interval'], $use_interval ) ||
 				     ! isset( $args['plan_id'] )
 				) {
+					// メタデータ（格納用）
+					$metadata_list = array( "email" => $email );
+					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
+					$metadata_list = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
 					try {
 						$charge = \Stripe\Charge::create( array(
 							"amount"        => $amount,
 							"currency"      => $currency,
 							"description"   => $description,
 							"receipt_email" => $email,
-							"metadata"      => array( "email" => $email ),
+							"metadata"      => $metadata_list,
 							"source"        => $token,
 						) );
 						$status = $charge->status; // succeeded で成功
@@ -607,6 +611,12 @@ function stripe_purchase() {
 					if ( ! empty( $coupon_code ) ) {
 						$sub_args['coupon'] = $coupon_code;
 					}
+
+					// メタデータ（格納用）
+					$metadata_list = array( "email" => $email );
+					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
+					$metadata_list = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
+					$sub_args['metadata'] = $metadata_list;
 
 					$subscription = \Stripe\Subscription::create( $sub_args );
 
