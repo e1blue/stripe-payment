@@ -4,6 +4,8 @@
  * @
  * Date: 2017/12/28
  * Time: 9:18
+ *
+ * Update: 2018/3/19
  */
 define( 'STRIPE_PAYMENT_RESULT_ID', "stripe-payment-result-gti" );
 
@@ -45,6 +47,8 @@ class StripePayment extends Singleton {
 			"interval_count"      => 1,
 			"plan_id"             => "",  // planの ID 入力で Stripe 登録済みのプランとなる （ subscription, interval は無視される ）
 			"checkout_id"         => "",  // checkout_id は同画面で複数チェックアウトするときは必須です。
+			"finish_post_id"      => "",  // サンクスページを表示するpost_id（固定ページ推奨）
+			"finish_param"        => "",  // サンクスページに表示するパラメータ finish_param="xxx|yyy,zzz|aaa"のように複数可 {xxx}をyyy に置換する
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
@@ -56,7 +60,7 @@ class StripePayment extends Singleton {
 
 		// 定期購買フラグ "on" で定期となる
 //		$subscription      = $atts['subscription'];
-		$coupon            = $atts['coupon'];
+		$coupon = $atts['coupon'];
 //		$trial_end         = $atts['trial_end'];
 //		$trial_period_days = $atts['trial_period_days'];
 //
@@ -168,13 +172,11 @@ function stripe_purchase() {
 		// 通常決済の場合
 		if ( $coupon == "on" ) {
 			$coupon_input_text = apply_filters( 'stripe-payment-gti-coupon_input_label', __( "Coupon Code", 'stripe-payment-gti' ) );
-			$html_str .= "
+			$html_str          .= "
 			{$coupon_input_text}: <input type='text' name='stripe-coupon' value=''><br>
 			";
 		}
 		$html_str .= $this->get_stripe_html( $checkout_args );
-
-
 		$html_str .= "
 				<input type='hidden' name='checkout_id' value='" . $checkout_id . "'>
 				<input type='hidden' name='nonce' value='" . wp_create_nonce( $amount ) . "'>";
@@ -318,7 +320,12 @@ function stripe_purchase() {
 	 * 受注処理結果表示ショートコード
 	 */
 	function stripe_payment_result( $atts ) {
+		// 返却値初期化
 		$ret_html    = "";
+		// 完了時メッセージの投稿ID初期化
+		$finish_post_id = null;
+		// 完了時メッセージキーバリュー初期化
+		$finish_param      = null;
 		$checkout_id = $atts['checkout_id'];
 		$this->stripe_error_log( "================= stripe_payment_result_display =========:" . $checkout_id );
 		if ( isset( $_REQUEST['stripeToken'] ) &&
@@ -357,12 +364,12 @@ function stripe_purchase() {
 
 			$currency = $atts['currency'];
 
-			$amount            = $atts['price'];   //　ここまでは price で引きずってる
-			$pay_id            = $atts['pay_id'];
-			$count             = $atts['count'];
-			$subscription      = $atts['subscription'];
-			$coupon            = $atts['coupon'];
-			$coupon_code       = "";
+			$amount       = $atts['price'];   //　ここまでは price で引きずってる
+			$pay_id       = $atts['pay_id'];
+			$count        = $atts['count'];
+			$subscription = $atts['subscription'];
+			$coupon       = $atts['coupon'];
+			$coupon_code  = "";
 			if ( $coupon == "on" ) {
 				$coupon_code = esc_attr( $_REQUEST['stripe-coupon'] );
 			}
@@ -372,6 +379,8 @@ function stripe_purchase() {
 			$interval_count    = $atts['interval_count'];
 			$plan_id           = $atts['plan_id'];
 			$description       = $atts['description'];
+			$finish_post_id    = $atts['finish_post_id'];
+			$finish_param      = $atts['finish_param'];
 
 			$args     = array(
 				'checkout_id'                      => esc_attr( $_REQUEST['checkout_id'] ),
@@ -421,27 +430,70 @@ function stripe_purchase() {
 				// 送付先住所 都道府県
 			);
 			$ret_html = $this->stripe_order( $stripeInfo, $args );
-			$_REQUEST = null;
 		}
+
 		$this->result_html = $ret_html;
 		if ( $ret_html != "" ) {
-			$result_html = str_replace( array( "\r\n", "\r", "\n" ), '', $this->result_html );
-			$result_html = str_replace( "&lt;", "<", $result_html );
-			$result_html = str_replace( "&gt;", ">", $result_html );
 
-			if ( empty( $_REQUEST['checkout_id'] ) ) {
+			if ( $finish_post_id != "" && is_numeric( $finish_post_id ) && get_post_status( (int) $finish_post_id ) != false ) {
+				$post_id = (int) $finish_post_id;
+				// サンクスページ指定時は内容取得表示
+				$post        = get_post( $post_id );
+				$result_html = $post->post_content;
+				// ショートコード
+				$result_html = do_shortcode( $result_html );
+				// wpautop
+				$result_html = wpautop( $result_html );
+
+				// finish_param が設定されている場合は文字列置換を行う
+				$result_html = $this->param_replace( $result_html, $finish_param );
+
 				echo $result_html;
 			} else {
-				echo "
-				<script>
-				jQuery( function() {
-			        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
-			        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
-				} );
-				</script>
-				";
+
+				$result_html = str_replace( array( "\r\n", "\r", "\n" ), '', $this->result_html );
+				$result_html = str_replace( "&lt;", "<", $result_html );
+				$result_html = str_replace( "&gt;", ">", $result_html );
+
+				// finish_param が設定されている場合は文字列置換を行う
+				$result_html = $this->param_replace( $result_html, $finish_param );
+				// 返却HTMLの生成フック
+				$result_html = apply_filters( "stripe-payment-gti-result_html", $result_html, $atts );
+
+				if ( empty( $_REQUEST['checkout_id'] ) ) {
+					echo $result_html;
+				} else {
+					echo "
+					<script>
+					jQuery( function() {
+				        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
+				        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
+					} );
+					</script>
+					";
+				}
 			}
 		}
+		$_REQUEST = null;
+
+	}
+
+	/**
+	 * ページの文字列をリクエストパラメータに置換する
+	 */
+	function param_replace( $result_html, $finish_param ) {
+		if ( ! empty( $finish_param ) ) {
+			$finish_param_list = explode( ",", $finish_param );
+			foreach ( $finish_param_list as $param ) {
+				$params = explode( "|", $param );
+				if ( count( $params ) == 2 ) {
+					$rep_str     = esc_attr( $_REQUEST[ $params[1] ] );
+					$result_html = str_replace( "{" . $params[0] . "}", $rep_str, $result_html );
+				}
+			}
+		}
+
+		return $result_html;
 	}
 
 	/**
@@ -615,14 +667,14 @@ function stripe_purchase() {
 					// メタデータ（格納用）
 					$metadata_list = array( "email" => $email );
 					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
-					$metadata_list = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
+					$metadata_list        = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
 					$sub_args['metadata'] = $metadata_list;
 
 					$subscription = \Stripe\Subscription::create( $sub_args );
 
-					$start        = $subscription->current_period_start;
-					$start        = date( "Y/m/d H:i:s", $start );
-					$start_str    = $start;
+					$start     = $subscription->current_period_start;
+					$start     = date( "Y/m/d H:i:s", $start );
+					$start_str = $start;
 					// active 等
 					$status = $subscription->status;
 
@@ -826,11 +878,6 @@ function stripe_purchase() {
 				$error_msg .= "------- Exception ------<br>";
 
 				$error_msg .= '捕捉した例外: ' . $e->getMessage() . "<br>";
-//				ob_start();
-//				var_dump( $e );
-//				$var = ob_get_contents();
-//				ob_end_clean();
-//				$error_msg .= "<!--".$var."-->";
 
 				return apply_filters( "stripe-payment-gti-payment-error-message", $error_msg );
 				$log = array(
