@@ -243,7 +243,7 @@ function stripe_purchase() {
 				$currency = get_option( 'stripe_payment_checkout_currency', 'jpy' );
 			}
 
-			$stripe_payment_checkout_img = apply_filters( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
+			$stripe_payment_checkout_img = get_option( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
 
 			$html_str .= "<script
 			src='https://checkout.stripe.com/checkout.js' class='stripe-button'
@@ -528,6 +528,8 @@ function stripe_purchase() {
 		$description = ( isset( $args['description'] ) ? $args['description'] : $args['name'] );
 
 		$currency = ( isset( $args['currency'] ) ? $args['currency'] : "jpy" );
+		// クーポン結果メッセージ
+		$coupon_result = "";
 
 		if ( ! empty( $stripeInfo ) ) {    //Stripe
 
@@ -681,8 +683,6 @@ function stripe_purchase() {
 					$interval       = $subscription->plan->interval;
 					$interval_count = $subscription->plan->interval_count;
 
-					$coupon_result = "";
-
 					if ( ! empty( $subscription->discount ) ) {
 						$coupon_result .= "COUPON: " . $subscription->discount->coupon->id . " \n";
 						$amount_off    = $subscription->discount->coupon->amount_off;
@@ -798,11 +798,11 @@ function stripe_purchase() {
 					$email_subject_for_customer,
 					$email_for_customer
 				);
-//				if ( $send_mail ) {
-//					error_log( "SEND_MAIL result: TRUE ? " );
-//				} else {
-//					error_log(" SEND MAIL RESULT FAILED");
-//				}
+				if ( $send_mail ) {
+					error_log( "SEND_MAIL result: TRUE ? " );
+				} else {
+					error_log(" SEND MAIL RESULT FAILED");
+				}
 				// for Admin
 				$email_subject_for_admin = get_option( 'stripe_payment_admin_mail_subject' );
 				$email_for_admin         = get_option( 'stripe_payment_admin_mail' );
@@ -841,6 +841,11 @@ function stripe_purchase() {
 					$email_subject_for_admin,
 					$email_for_admin
 				);
+				if ( $send_mail ) {
+					error_log( "ADMIN:SEND_MAIL result: TRUE ? " );
+				} else {
+					error_log(" ADMIN:SEND MAIL RESULT FAILED");
+				}
 
 				// 画面表示
 //			echo "ご請求先 氏名: ".$billingName."<br>";
@@ -861,8 +866,9 @@ function stripe_purchase() {
 						$thanks_msg = str_replace( "{" . $key . "}", $val, $thanks_msg );
 					}
 				}
-
-				$thanks_msg .= str_replace( "\n", "<br>", $coupon_result );
+				if ( ! empty( $coupon_result ) ) {
+					$thanks_msg .= str_replace( "\n", "<br>", $coupon_result );
+				}
 
 				// オプション処理
 				apply_filters( 'stripe-payment-gti-payment-after', $_REQUEST );
