@@ -5,7 +5,7 @@
  * Date: 2017/12/28
  * Time: 9:18
  *
- * Update: 2018/3/19
+ * Update: 2018/4/19
  */
 define( 'STRIPE_PAYMENT_RESULT_ID', "stripe-payment-result-gti" );
 
@@ -49,30 +49,16 @@ class StripePayment extends Singleton {
 			"checkout_id"         => "",  // checkout_id は同画面で複数チェックアウトするときは必須です。
 			"finish_post_id"      => "",  // サンクスページを表示するpost_id（固定ページ推奨）
 			"finish_param"        => "",  // サンクスページに表示するパラメータ finish_param="xxx|yyy,zzz|aaa"のように複数可 {xxx}をyyy に置換する
+
+			"site_name" => "",    // 表示用名称 なければ サイト名を使用
 		), $atts );
 
 		// 通貨 （指定ない場合は jpy）
 		$currency = $atts['currency'];
 		$amount   = $atts['price'];
 
-//		$pay_id = $atts['pay_id'];
-//		$count  = $atts['count'];
-
 		// 定期購買フラグ "on" で定期となる
-//		$subscription      = $atts['subscription'];
 		$coupon = $atts['coupon'];
-//		$trial_end         = $atts['trial_end'];
-//		$trial_period_days = $atts['trial_period_days'];
-//
-//		// プラン指定時は必要ないが新規プランを作成する場合は必須（エラーとなってしまう）
-//		$interval       = $atts['interval'];
-//		$interval_count = $atts['interval_count'];  // 無指定時には1
-//
-//		// プラン指定時には必須（新規作成時には interval[, interval_count=1] を指定すること
-//		$plan_id = $atts['plan_id'];
-//
-//		// 概要（nameとして記録される）
-//		$description = $atts['description'];
 
 		$checkout_id = $atts['checkout_id'];
 
@@ -154,6 +140,7 @@ function stripe_purchase() {
 		$pay_id       = $atts['pay_id'];
 		$count        = $atts['count'];
 		$checkout_id  = $atts['checkout_id'];
+		$site_name    = esc_attr( $atts['site_name'] );
 
 		// チェックアウト表示パラメータ
 		$checkout_args = array(
@@ -167,7 +154,8 @@ function stripe_purchase() {
 			'ship_address'        => $ship_address,
 			'pay_id'              => $pay_id,
 			'count'               => $count,
-			'checkout_id'         => $checkout_id
+			'checkout_id'         => $checkout_id,
+			'site_name'           => $site_name
 		);
 		// 通常決済の場合
 		if ( $coupon == "on" ) {
@@ -216,7 +204,7 @@ function stripe_purchase() {
 		$this->stripe_error_log( "==================== COUNT: " . $count . " ZAN_COUNT: " . $zan_count );
 		if ( $zan_count > 0 || $count == 0 ) {
 
-			$site_name  = get_bloginfo( 'name' );
+			$site_name  = ( '' != $checkout_args['site_name'] ? $checkout_args['site_name'] : get_bloginfo( 'name' ) );
 			$public_key = get_option( 'stripe_payment_public_key' );
 
 			$checkout_label_text = "";
@@ -321,12 +309,12 @@ function stripe_purchase() {
 	 */
 	function stripe_payment_result( $atts ) {
 		// 返却値初期化
-		$ret_html    = "";
+		$ret_html = "";
 		// 完了時メッセージの投稿ID初期化
 		$finish_post_id = null;
 		// 完了時メッセージキーバリュー初期化
-		$finish_param      = null;
-		$checkout_id = $atts['checkout_id'];
+		$finish_param = null;
+		$checkout_id  = $atts['checkout_id'];
 		$this->stripe_error_log( "================= stripe_payment_result_display =========:" . $checkout_id );
 		if ( isset( $_REQUEST['stripeToken'] ) &&
 		     ( empty( $_REQUEST['checkout_id'] ) ||
@@ -801,7 +789,7 @@ function stripe_purchase() {
 				if ( $send_mail ) {
 					error_log( "SEND_MAIL result: TRUE ? " );
 				} else {
-					error_log(" SEND MAIL RESULT FAILED");
+					error_log( " SEND MAIL RESULT FAILED" );
 				}
 				// for Admin
 				$email_subject_for_admin = get_option( 'stripe_payment_admin_mail_subject' );
@@ -844,7 +832,7 @@ function stripe_purchase() {
 				if ( $send_mail ) {
 					error_log( "ADMIN:SEND_MAIL result: TRUE ? " );
 				} else {
-					error_log(" ADMIN:SEND MAIL RESULT FAILED");
+					error_log( " ADMIN:SEND MAIL RESULT FAILED" );
 				}
 
 				// 画面表示
