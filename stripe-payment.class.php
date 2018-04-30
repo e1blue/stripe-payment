@@ -421,45 +421,42 @@ function stripe_purchase() {
 		}
 
 		$this->result_html = $ret_html;
-		if ( $ret_html != "" ) {
+		if ( $finish_post_id != "" && is_numeric( $finish_post_id ) && get_post_status( (int) $finish_post_id ) != false ) {
+			$post_id = (int) $finish_post_id;
+			// サンクスページ指定時は内容取得表示
+			$post        = get_post( $post_id );
+			$result_html = $post->post_content;
+			// ショートコード
+			$result_html = do_shortcode( $result_html );
+			// wpautop
+			$result_html = wpautop( $result_html );
 
-			if ( $finish_post_id != "" && is_numeric( $finish_post_id ) && get_post_status( (int) $finish_post_id ) != false ) {
-				$post_id = (int) $finish_post_id;
-				// サンクスページ指定時は内容取得表示
-				$post        = get_post( $post_id );
-				$result_html = $post->post_content;
-				// ショートコード
-				$result_html = do_shortcode( $result_html );
-				// wpautop
-				$result_html = wpautop( $result_html );
+			// finish_param が設定されている場合は文字列置換を行う
+			$result_html = $this->param_replace( $result_html, $finish_param );
 
-				// finish_param が設定されている場合は文字列置換を行う
-				$result_html = $this->param_replace( $result_html, $finish_param );
+			echo $result_html;
+		} elseif ( $ret_html != "" ) {
 
+			$result_html = str_replace( array( "\r\n", "\r", "\n" ), '', $this->result_html );
+			$result_html = str_replace( "&lt;", "<", $result_html );
+			$result_html = str_replace( "&gt;", ">", $result_html );
+
+			// finish_param が設定されている場合は文字列置換を行う
+			$result_html = $this->param_replace( $result_html, $finish_param );
+			// 返却HTMLの生成フック
+			$result_html = apply_filters( "stripe-payment-gti-result_html", $result_html, $atts );
+
+			if ( empty( $_REQUEST['checkout_id'] ) ) {
 				echo $result_html;
 			} else {
-
-				$result_html = str_replace( array( "\r\n", "\r", "\n" ), '', $this->result_html );
-				$result_html = str_replace( "&lt;", "<", $result_html );
-				$result_html = str_replace( "&gt;", ">", $result_html );
-
-				// finish_param が設定されている場合は文字列置換を行う
-				$result_html = $this->param_replace( $result_html, $finish_param );
-				// 返却HTMLの生成フック
-				$result_html = apply_filters( "stripe-payment-gti-result_html", $result_html, $atts );
-
-				if ( empty( $_REQUEST['checkout_id'] ) ) {
-					echo $result_html;
-				} else {
-					echo "
-					<script>
-					jQuery( function() {
-				        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
-				        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
-					} );
-					</script>
-					";
-				}
+				echo "
+				<script>
+				jQuery( function() {
+			        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
+			        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
+				} );
+				</script>
+				";
 			}
 		}
 		$_REQUEST = null;
@@ -844,7 +841,7 @@ function stripe_purchase() {
 //			echo "金額: ".$amount."<br>";
 
 				// サンクス画面
-				$thanks_msg = get_option( 'stripe_payment_thanks_message' );
+				$thanks_msg = get_option( 'stripe_payment_thanks_message', "" );
 				foreach ( $replace_array as $key => $val ) {
 					$thanks_msg = str_replace( "{" . $key . "}", $val, $thanks_msg );
 				}
@@ -863,9 +860,9 @@ function stripe_purchase() {
 
 				$thanks_msg = str_replace( "\n", "<br>", $thanks_msg );
 
-				return $thanks_msg;
-
 				$this->stripe_error_log( 'Stripe RESULT' );
+
+				return $thanks_msg;
 
 			} catch ( Exception $e ) {
 				$error_msg = "stripe_order 処理に失敗しました。<br>";
