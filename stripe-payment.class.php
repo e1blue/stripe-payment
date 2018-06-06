@@ -210,6 +210,7 @@ function stripe_purchase() {
 			if ( isset( $payment_test_flg ) && $payment_test_flg == "1" ) {
 				$public_key = get_option( 'stripe_payment_test_public_key' );
 			}
+
 			// エラー判定
 			if ( ! isset( $public_key ) || empty( $public_key ) ) {
 				return "Stripe Setting Error.";
@@ -254,7 +255,7 @@ function stripe_purchase() {
 			";
 			}
 			$html_str .= " data-name='{$site_name}' ";
-			$html_str .= " data-amount=\"{$amount}\" ";
+			$html_str .= " data-amount='{$amount}' ";
 			$html_str .= " data-key='{$public_key}' ";
 			$html_str .= " data-label='{$checkout_btn_text}' ";
 			$html_str .= " data-description='{$description}' ";
@@ -285,6 +286,11 @@ function stripe_purchase() {
 
 				// TOKEN ゲット。
 				$secret_key = get_option( 'stripe_payment_secret_key' );
+				$payment_test_flg = get_option( 'stripe_payment_test_flg' );
+				$this->stripe_error_log( "test_flg:".$payment_test_flg );
+				if ( isset( $payment_test_flg ) && $payment_test_flg == "1" ) {
+					$secret_key = get_option( 'stripe_payment_test_secret_key' );
+				}
 				$this->stripe_error_log( "================= Stripe Info =========" );
 				$this->stripe_error_log( "SECRET KEY : " . $secret_key );
 				\Stripe\Stripe::setApiKey( $secret_key );
