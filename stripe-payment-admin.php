@@ -31,6 +31,11 @@ class StripePaymentSetting {   // 管理画面
 		add_filter('admin_footer_text', '__return_empty_string');
 	}
 
+	function admin_item_init() {
+		wp_register_script( 'cf--my-upload', plugins_url( '/js/upload.js', __FILE__ ) );
+		wp_enqueue_script( 'cf--my-upload' );
+	}
+
 	function add_pages() {
 		$mincap = 'manage_options';
 		if ( function_exists( 'add_submenu_page' ) ) {
@@ -53,10 +58,18 @@ class StripePaymentSetting {   // 管理画面
 			$stripe_payment_checkout_img = esc_attr( $_POST['stripe_payment_checkout_img'] );
 			update_option( 'stripe_payment_checkout_img', $stripe_payment_checkout_img );
 
+			$stripe_payment_test_flg = esc_attr( $_POST['stripe_payment_test_flg'] );
+			update_option( 'stripe_payment_test_flg', $stripe_payment_test_flg );
+
 			$stripe_payment_public_key = esc_attr( $_POST['stripe_payment_public_key'] );
 			update_option( 'stripe_payment_public_key', $stripe_payment_public_key );
 			$stripe_payment_secret_key = esc_attr( $_POST['stripe_payment_secret_key'] );
 			update_option( 'stripe_payment_secret_key', $stripe_payment_secret_key );
+
+			$stripe_payment_test_public_key = esc_attr( $_POST['stripe_payment_test_public_key'] );
+			update_option( 'stripe_payment_test_public_key', $stripe_payment_test_public_key );
+			$stripe_payment_test_secret_key = esc_attr( $_POST['stripe_payment_test_secret_key'] );
+			update_option( 'stripe_payment_test_secret_key', $stripe_payment_test_secret_key );
 
 			$stripe_payment_checkout_currency = esc_attr( $_POST['stripe_payment_checkout_currency'] );
 			update_option( 'stripe_payment_checkout_currency', $stripe_payment_checkout_currency );
@@ -105,8 +118,12 @@ class StripePaymentSetting {   // 管理画面
 
 			$stripe_payment_checkout_img = get_option( 'stripe_payment_checkout_img', STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE );
 
+			$stripe_payment_test_flg = get_option( 'stripe_payment_test_flg' );
+
 			$stripe_payment_public_key = get_option( 'stripe_payment_public_key' );
 			$stripe_payment_secret_key = get_option( 'stripe_payment_secret_key' );
+			$stripe_payment_test_public_key = get_option( 'stripe_payment_test_public_key' );
+			$stripe_payment_test_secret_key = get_option( 'stripe_payment_test_secret_key' );
 
 			$stripe_payment_checkout_currency = get_option( 'stripe_payment_checkout_currency', 'jpy' );
 
@@ -134,24 +151,64 @@ class StripePaymentSetting {   // 管理画面
                                 for="inputimageurl"><?php _e( 'Image of Stripe Paid', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td>
+                        <div id="inputimageurl_img"><?php
+	                        if ( isset( $stripe_payment_checkout_img ) ) {
+		                        $response = @file_get_contents( $stripe_payment_checkout_img );
+		                        if ( $response !== false ) {
+?><img src="<?php echo $stripe_payment_checkout_img; ?>" width="150px" ><?php
+		                        }
+	                        }
+                        ?></div>
                         <input name="stripe_payment_checkout_img" type="text" id="inputimageurl"
-                               value="<?php echo $stripe_payment_checkout_img; ?>" class="regular-text"><br>
+                               value="<?php echo $stripe_payment_checkout_img; ?>" class="regular-text">
+                        <input type="button" class="stripe_payment_checkout_image_button" value="<?php _e( 'Select Image.', 'stripe-payment-gti' ); ?>"><br>
                         Default Value: <?php echo STRIPE_PAYMENT_CHECKOUT_IMG_MARKETPLACE; ?>
                     </td>
                 </tr>
+
                 <tr>
+                    <th scope="row"><label
+                                for="inputtestmode"><?php _e( 'Test Mode', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td>
+                        <?php
+                        $test_mrk = "";
+                        if ( isset( $stripe_payment_test_flg ) && $stripe_payment_test_flg == "1" ) {
+                            $test_mrk = " checked='checked'";
+                        }
+                        ?>
+                        <input name="stripe_payment_test_flg" type="checkbox" id="inputtestmode"
+                               value="1"<?php echo $test_mrk; ?>" class="regular-text" onclick="chkTestMode(this)"></td>
+                </tr>
+
+                <tr <?php if ( $stripe_payment_test_flg == "1" ) { ?> style="display:none;"<?php } ?>>
                     <th scope="row"><label
                                 for="inputpublickey"><?php _e( 'Public Key', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td><input name="stripe_payment_public_key" type="text" id="inputpublickey"
                                value="<?php echo $stripe_payment_public_key; ?>" class="regular-text"></td>
                 </tr>
-                <tr>
+                <tr <?php if ( $stripe_payment_test_flg == "1" ) { ?> style="display:none;"<?php } ?>>
                     <th scope="row"><label
                                 for="inputsecretkey"><?php _e( 'Secret Key', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td><input name="stripe_payment_secret_key" type="text" id="inputsecretkey"
                                value="<?php echo $stripe_payment_secret_key; ?>" class="regular-text"></td>
+                </tr>
+
+                <tr <?php if ( $stripe_payment_test_flg != "1" ) { ?> style="display:none;"<?php } ?>>
+                    <th scope="row"><label
+                                for="inputtestpublickey"><?php _e( 'Test Public Key', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input name="stripe_payment_test_public_key" type="text" id="inputtestpublickey"
+                               value="<?php echo $stripe_payment_test_public_key; ?>" class="regular-text"></td>
+                </tr>
+                <tr <?php if ( $stripe_payment_test_flg != "1" ) { ?> style="display:none;"<?php } ?>>
+                    <th scope="row"><label
+                                for="inputtestsecretkey"><?php _e( 'Test Secret Key', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input name="stripe_payment_test_secret_key" type="text" id="inputtestsecretkey"
+                               value="<?php echo $stripe_payment_test_secret_key; ?>" class="regular-text"></td>
                 </tr>
 
 
@@ -189,7 +246,7 @@ class StripePaymentSetting {   // 管理画面
                                 for="input_thanks_msg"><?php _e( 'Thank You Message', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td><textarea name="stripe_payment_thanks_message"
-                                  id="input_thanks_msg"><?php echo $stripe_payment_thanks_message;
+                                  id="input_thanks_msg" rows="10" cols="50"><?php echo $stripe_payment_thanks_message;
 							?></textarea>
                     </td>
                 </tr>
@@ -206,7 +263,7 @@ class StripePaymentSetting {   // 管理画面
                                 for="input_custom_mail"><?php _e( 'Template Of EMail For Customer', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td><textarea name="stripe_payment_customer_mail"
-                                  id="input_custom_mail"><?php echo $stripe_payment_customer_mail;
+                                  id="input_custom_mail" rows="10" cols="50"><?php echo $stripe_payment_customer_mail;
 							?></textarea>
                     </td>
                 </tr>
@@ -223,7 +280,7 @@ class StripePaymentSetting {   // 管理画面
                                 for="input_admin_mail"><?php _e( 'Template Of EMail For Administrator', 'stripe-payment-gti' ); ?></label>
                     </th>
                     <td><textarea name="stripe_payment_admin_mail"
-                                  id="input_admin_mail"><?php echo $stripe_payment_admin_mail;
+                                  id="input_admin_mail" rows="10" cols="50"><?php echo $stripe_payment_admin_mail;
 							?></textarea>
                     </td>
                 </tr>
@@ -348,6 +405,6 @@ class StripePaymentSetting {   // 管理画面
 
 if ( is_admin() ) {
 	$showtext = new StripePaymentSetting;
-
+	add_action( 'admin_head', array( $showtext, 'admin_item_init' ) );
 }
 

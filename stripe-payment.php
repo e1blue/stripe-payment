@@ -3,7 +3,7 @@
 Plugin Name: Stripe Payment By GTI
 Plugin URI: https://gti.co.jp/
 Description: Stripe Payment.
-Version: 1.4.2
+Version: 1.5
 Author: Takeshi Satoh@ GTI Inc.
 Author URI: https://gti.co.jp/
 Text Domain: stripe-payment-gti
@@ -11,6 +11,7 @@ Domain Path: /languages/
  */
 /**
  * 更新履歴：
+ * 2018/6/6  フォームのイメージをメディアライブラリから選べるようにした テストモードを導入した
  * 2018/4/18 フォームの名称部分を site_name="" で指定出来るようにした デフォルト値はサイト名
  * 2018/4/16 フォームのイメージ変更出来るようにした・・・修正
  * 2018/3/19 完了ページに投稿が使えるようにした。 finish_post_id 及び finish_param 追加

@@ -206,7 +206,14 @@ function stripe_purchase() {
 
 			$site_name  = ( '' != $checkout_args['site_name'] ? $checkout_args['site_name'] : get_bloginfo( 'name' ) );
 			$public_key = get_option( 'stripe_payment_public_key' );
-
+			$payment_test_flg = get_option( 'stripe_payment_test_flg' );
+			if ( isset( $payment_test_flg ) && $payment_test_flg == "1" ) {
+				$public_key = get_option( 'stripe_payment_test_public_key' );
+			}
+			// エラー判定
+			if ( ! isset( $public_key ) || empty( $public_key ) ) {
+				return "Stripe Setting Error.";
+			}
 			$checkout_label_text = "";
 			$checkout_btn_text   = "";
 			$amount              = 0;

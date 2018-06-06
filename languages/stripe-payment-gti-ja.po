@@ -1,15 +1,15 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Stripe Payment By GTI\n"
-"POT-Creation-Date: 2018-03-02 13:17+0900\n"
-"PO-Revision-Date: 2018-03-02 13:33+0900\n"
+"POT-Creation-Date: 2018-06-06 16:33+0900\n"
+"PO-Revision-Date: 2018-06-06 16:33+0900\n"
 "Last-Translator: \n"
 "Language-Team: \n"
-"Language: ja_JP\n"
+"Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.0.5\n"
+"X-Generator: Poedit 2.0.8\n"
 "X-Poedit-Basepath: ..\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Poedit-Flags-xgettext: --add-comments=translators:\n"
@@ -21,39 +21,55 @@ msgstr ""
 "X-Poedit-SearchPath-0: .\n"
 "X-Poedit-SearchPathExcluded-0: *.js\n"
 
-#: stripe-payment-admin.php:28
+#: stripe-payment-admin.php:42
 msgid "Stripe Payment"
 msgstr "Stripeペイメント"
 
-#: stripe-payment-admin.php:28
+#: stripe-payment-admin.php:42
 msgid "Stripe Setting"
 msgstr "Stripe設定"
 
-#: stripe-payment-admin.php:81
+#: stripe-payment-admin.php:103
 msgid "Saved."
 msgstr "保存されました."
 
-#: stripe-payment-admin.php:92
+#: stripe-payment-admin.php:114
 msgid "Stripe Settings"
 msgstr "Stripe設定"
 
-#: stripe-payment-admin.php:125
+#: stripe-payment-admin.php:151
 msgid "Image of Stripe Paid"
 msgstr "Stripe表示イメージ"
 
-#: stripe-payment-admin.php:135
+#: stripe-payment-admin.php:157
+msgid "Select Image."
+msgstr "画像選択"
+
+#: stripe-payment-admin.php:164
+msgid "Test Mode"
+msgstr "テストモードにする"
+
+#: stripe-payment-admin.php:179
 msgid "Public Key"
 msgstr "公開キー"
 
-#: stripe-payment-admin.php:142
+#: stripe-payment-admin.php:186
 msgid "Secret Key"
 msgstr "秘密キー"
 
-#: stripe-payment-admin.php:150
+#: stripe-payment-admin.php:194
+msgid "Test Public Key"
+msgstr "テスト公開キー"
+
+#: stripe-payment-admin.php:201
+msgid "Test Secret Key"
+msgstr "テスト秘密キー"
+
+#: stripe-payment-admin.php:209
 msgid "currency"
 msgstr "通貨種類"
 
-#: stripe-payment-admin.php:153
+#: stripe-payment-admin.php:212
 msgid ""
 "3-letter\n"
 "                            ISO code for currency. 例： jpy, usd etc. "
@@ -64,84 +80,84 @@ msgstr ""
 "例: jpy,usd など<br>単一の顧客に対して複数の通貨で決済しようとするとエラー"
 "が発生します。"
 
-#: stripe-payment-admin.php:160
+#: stripe-payment-admin.php:219
 msgid "Settlement Start Button Text"
 msgstr "決済開始ボタンのテキスト"
 
-#: stripe-payment-admin.php:164 stripe-payment-admin.php:173
+#: stripe-payment-admin.php:223 stripe-payment-admin.php:232
 #, php-format
 msgid "The invoice amount will be included in the part described as %s"
 msgstr "請求金額は %s と記載されている部分に当てはめられます"
 
-#: stripe-payment-admin.php:169
+#: stripe-payment-admin.php:228
 msgid "Settlement information transmission button text"
 msgstr "決済情報送信ボタンのテキスト"
 
-#: stripe-payment-admin.php:180
+#: stripe-payment-admin.php:239
 msgid "Thank You Message"
 msgstr "サンクス メッセージ"
 
-#: stripe-payment-admin.php:189
+#: stripe-payment-admin.php:248
 msgid "EMail Subject For Customer"
 msgstr "お客様向けメールタイトル"
 
-#: stripe-payment-admin.php:197
+#: stripe-payment-admin.php:256
 msgid "Template Of EMail For Customer"
 msgstr "お客様向けメールテンプレート"
 
-#: stripe-payment-admin.php:206
+#: stripe-payment-admin.php:265
 msgid "EMail Subject For Administrator"
 msgstr "管理者向けメールタイトル"
 
-#: stripe-payment-admin.php:214
+#: stripe-payment-admin.php:273
 msgid "Template Of EMail For Administrator"
 msgstr "管理者向けメールテンプレート"
 
-#: stripe-payment-admin.php:223
+#: stripe-payment-admin.php:282
 msgid "Stripe's processing wait after inputting credit card Loading image"
 msgstr "クレジット情報入力後の処理待ちローディング画像"
 
-#: stripe-payment-admin.php:233
+#: stripe-payment-admin.php:292
 msgid "Update settings"
 msgstr "設定の更新"
 
-#: stripe-payment-admin.php:238
+#: stripe-payment-admin.php:297
 msgid "Stripe Item Result Count"
 msgstr "Stripeアイテム結果数"
 
-#: stripe-payment-admin.php:272
+#: stripe-payment-admin.php:331
 msgid "Details of Stripe service are here"
 msgstr "Stripe サービスの詳細はこちら"
 
-#: stripe-payment.class.php:170
+#: stripe-payment.class.php:162
 msgid "Coupon Code"
 msgstr "クーポンコード"
 
-#: stripe-payment.class.php:272
+#: stripe-payment.class.php:262
 msgid "No Item."
 msgstr "商品がなくなりました。"
 
-#: stripe-payment.class.php:718
+#: stripe-payment.class.php:796
 msgid "Billing Name"
 msgstr "請求先 氏名"
 
-#: stripe-payment.class.php:719
+#: stripe-payment.class.php:797
 msgid "Shipping Name"
 msgstr "送付先 氏名"
 
-#: stripe-payment.class.php:720
+#: stripe-payment.class.php:798
 msgid "Email"
 msgstr "メールアドレス"
 
-#: stripe-payment.class.php:721
+#: stripe-payment.class.php:799
 msgid "Card Brand"
 msgstr "カードブランド"
 
-#: stripe-payment.class.php:722
+#: stripe-payment.class.php:800
 msgid "Card No"
 msgstr "カード番号"
 
-#: stripe-payment.class.php:723
+#: stripe-payment.class.php:801
 msgid "Amount"
 msgstr "金額"
 
