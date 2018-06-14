@@ -68,9 +68,13 @@ class StripePayment extends Singleton {
 		$checkout_label_text = "";
 		if ( isset( $atts['checkout_btn_text'] ) && trim( $atts['checkout_btn_text'] ) != "" ) {
 			$checkout_btn_text = $atts['checkout_btn_text'];
+		} else {
+			$checkout_btn_text = get_option( 'stripe_payment_checkout_btn_text' );
 		}
 		if ( isset( $atts['checkout_label_text'] ) && trim( $atts['checkout_label_text'] ) != "" ) {
 			$checkout_label_text = $atts['checkout_label_text'];
+		} else {
+			$checkout_label_text = get_option( 'stripe_payment_checkout_label_text' );
 		}
 		$description = "";
 		if ( isset( $atts['description'] ) && trim( $atts['description'] ) != "" ) {
