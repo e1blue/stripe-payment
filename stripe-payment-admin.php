@@ -34,6 +34,10 @@ class StripePaymentSetting {   // 管理画面
 	function admin_item_init() {
 		wp_register_script( 'cf--my-upload', plugins_url( '/js/upload.js', __FILE__ ) );
 		wp_enqueue_script( 'cf--my-upload' );
+		wp_enqueue_script('thickbox');
+
+		// Load thickbox CSS
+		wp_enqueue_style('thickbox');
 	}
 
 	function add_pages() {
