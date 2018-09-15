@@ -333,6 +333,11 @@ function stripe_purchase() {
 		$finish_param = null;
 		$checkout_id  = $atts['checkout_id'];
 		$this->stripe_error_log( "================= stripe_payment_result_display =========:" . $checkout_id );
+		ob_start();
+		var_dump( $_REQUEST );
+		$var = ob_get_contents();
+		ob_end_clean();
+		$this->stripe_error_log( $var );
 		if ( isset( $_REQUEST['stripeToken'] ) &&
 		     ( empty( $_REQUEST['checkout_id'] ) ||
 		       $checkout_id === $_REQUEST['checkout_id'] ) ) {
@@ -469,14 +474,13 @@ function stripe_purchase() {
 				echo "
 				<script>
 				jQuery( function() {
-			        jQuery('#{STRIPE_PAYMENT_RESULT_ID}').html('{$result_html}');
-			        location.href = \"#{STRIPE_PAYMENT_RESULT_ID}\";
+			        jQuery('#".STRIPE_PAYMENT_RESULT_ID."').html('{$result_html}');
+			        location.href = \"#".STRIPE_PAYMENT_RESULT_ID."\";
 				} );
 				</script>
 				";
 			}
 		}
-		$_REQUEST = null;
 
 	}
 
