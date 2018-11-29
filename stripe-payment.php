@@ -3,7 +3,7 @@
 Plugin Name: Stripe Payment By GTI
 Plugin URI: https://gti.co.jp/
 Description: Stripe Payment.
-Version: 1.5.3
+Version: 1.6
 Author: Takeshi Satoh@ GTI Inc.
 Author URI: https://gti.co.jp/
 Text Domain: stripe-payment-gti
@@ -11,6 +11,7 @@ Domain Path: /languages/
  */
 /**
  * 更新履歴：
+ * 2018/11/29   1.6 パラメータに metadata 追加。Stripeの決済データにメタデータとして格納したいパラメータ名を指定できる。
  * 2018/9/15 1.5.3 同一画面に複数決済ボタンが存在するときに2つ目以降でリクエストが削除されていた不具合を修正
  * 2018/9/14 1.5.2 画像変更時に thickbox が読み込まれていないとボタンが押せないので読み込むように修正
  * 2018/6/14 1.5.1 初期設定のボタンテキスト・ラベルテキストが聴いていないため修正

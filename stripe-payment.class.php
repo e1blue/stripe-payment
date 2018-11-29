@@ -208,8 +208,8 @@ function stripe_purchase() {
 		$this->stripe_error_log( "==================== COUNT: " . $count . " ZAN_COUNT: " . $zan_count );
 		if ( $zan_count > 0 || $count == 0 ) {
 
-			$site_name  = ( '' != $checkout_args['site_name'] ? $checkout_args['site_name'] : get_bloginfo( 'name' ) );
-			$public_key = get_option( 'stripe_payment_public_key' );
+			$site_name        = ( '' != $checkout_args['site_name'] ? $checkout_args['site_name'] : get_bloginfo( 'name' ) );
+			$public_key       = get_option( 'stripe_payment_public_key' );
 			$payment_test_flg = get_option( 'stripe_payment_test_flg' );
 			if ( isset( $payment_test_flg ) && $payment_test_flg == "1" ) {
 				$public_key = get_option( 'stripe_payment_test_public_key' );
@@ -289,9 +289,9 @@ function stripe_purchase() {
 			try {
 
 				// TOKEN ゲット。
-				$secret_key = get_option( 'stripe_payment_secret_key' );
+				$secret_key       = get_option( 'stripe_payment_secret_key' );
 				$payment_test_flg = get_option( 'stripe_payment_test_flg' );
-				$this->stripe_error_log( "test_flg:".$payment_test_flg );
+				$this->stripe_error_log( "test_flg:" . $payment_test_flg );
 				if ( isset( $payment_test_flg ) && $payment_test_flg == "1" ) {
 					$secret_key = get_option( 'stripe_payment_test_secret_key' );
 				}
@@ -332,7 +332,7 @@ function stripe_purchase() {
 		// 完了時メッセージキーバリュー初期化
 		$finish_param = null;
 		$checkout_id  = $atts['checkout_id'];
-		$this->stripe_error_log( "================= stripe_payment_result_display =========:" . $checkout_id );
+		$this->stripe_error_log( "================= CHECK_ID =========:" . $checkout_id );
 		if ( isset( $_REQUEST['stripeToken'] ) &&
 		     ( empty( $_REQUEST['checkout_id'] ) ||
 		       $checkout_id === $_REQUEST['checkout_id'] ) ) {
@@ -386,9 +386,24 @@ function stripe_purchase() {
 			$description       = $atts['description'];
 			$finish_post_id    = $atts['finish_post_id'];
 			$finish_param      = $atts['finish_param'];
+			$metadata_str      = $atts['metadata'];
+			$metadata          = null;
+			if ( ! empty( $metadata_str ) ) {
+				$metadata_ary = preg_split( ",", $metadata );
+				if ( is_array( $metadata_ary ) && count( $metadata_ary ) > 0 ) {
+					foreach ( $metadata_ary as $item_key ) {
+						$item_val = $_REQUEST[ $item_key ];
+						if ( ! empty( $item_val ) ) {
+							$metadata[ $item_key ] = $item_val;
+						} else {
+							$metadata[ $item_key ] = null;
+						}
+					}
+				}
+			}
 
 			$args     = array(
-				'checkout_id'                      => esc_attr( $_REQUEST['checkout_id'] ),
+				'checkout_id'                      => esc_attr( $checkout_id ),
 				'currency'                         => esc_attr( $currency ),
 				'result'                           => ( isset( $_REQUEST['result'] ) ? esc_attr( $_REQUEST['result'] ) : '' ),
 				'amount'                           => esc_attr( $amount ),
@@ -402,6 +417,7 @@ function stripe_purchase() {
 				'interval_count'                   => esc_attr( $interval_count ),
 				'plan_id'                          => esc_attr( $plan_id ),
 				'description'                      => esc_attr( $description ),
+				'metadata'                         => $metadata,
 				'stripeToken'                      => $stripeToken,
 				'stripeTokenType'                  => ( isset( $_REQUEST['stripeTokenType'] ) ? esc_attr( $_REQUEST['stripeTokenType'] ) : '' ),
 				'stripeEmail'                      => ( isset( $_REQUEST['stripeEmail'] ) ? esc_attr( $_REQUEST['stripeEmail'] ) : '' ),
@@ -463,14 +479,16 @@ function stripe_purchase() {
 			// 返却HTMLの生成フック
 			$result_html = apply_filters( "stripe-payment-gti-result_html", $result_html, $atts );
 
-			if ( empty( $_REQUEST['checkout_id'] ) ) {
+			if ( empty( $checkout_id ) ) {
 				echo $result_html;
 			} else {
+				$this->stripe_error_log("=== STRIPE PAYMENT RESULT CHECKOUT_ID:".$checkout_id );
+				$this->stripe_error_log( "=== STRIPE::: ".$result_html." ===");
 				echo "
 				<script>
 				jQuery( function() {
-			        jQuery('#".STRIPE_PAYMENT_RESULT_ID."').html('{$result_html}');
-			        location.href = \"#".STRIPE_PAYMENT_RESULT_ID."\";
+			        jQuery('#" . STRIPE_PAYMENT_RESULT_ID . "').html('{$result_html}');
+			        location.href = \"#" . STRIPE_PAYMENT_RESULT_ID . "\";
 				} );
 				</script>
 				";
@@ -552,6 +570,18 @@ function stripe_purchase() {
 				) {
 					// メタデータ（格納用）
 					$metadata_list = array( "email" => $email );
+					// 格納メタデータ指定取得
+					$metadata = $args['metadata'];
+					if ( ! empty( $metadata ) && is_array( $metadata ) && count( $metadata ) > 0 ) {
+						foreach ( $metadata as $key=>$val ) {
+							if ( $key != "email" ) {
+								$metadata_list[ $key ] = $val;
+							}
+						}
+						var_dump( $metadata_list );
+						exit;
+					}
+
 					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
 					$metadata_list = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
 					try {
@@ -920,8 +950,12 @@ function stripe_purchase() {
 	/**
 	 * 結果表示
 	 */
-	function stripe_payment_result_display() {
-		return "<span id='{STRIPE_PAYMENT_RESULT_ID}'></span>";
+	function stripe_payment_result_display( $flg = true ) {
+		$this->stripe_error_log(" === stripe_payment_result_display === ");
+		$stripe_payment_result_str = "<span id='".STRIPE_PAYMENT_RESULT_ID."'></span>";
+		ob_start();
+		echo $stripe_payment_result_str;
+		return ob_get_clean();
 	}
 
 	/**
