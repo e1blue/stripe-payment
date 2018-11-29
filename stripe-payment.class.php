@@ -35,6 +35,7 @@ class StripePayment extends Singleton {
 			"address"             => "",  // 住所入力するかパラメータ存在したら ON
 			"ship_address"        => "",  // 送付先住所入力するかパラメータ存在したら　ON
 			"form"                => "",  // 任意のフォームに存在させる場合に form="on" とすると submit ボタンとして動作（独自に<form/>タグを出力しなくなる
+			"metadata"            => "",  // メタデータに格納するパラメータ カンマ区切りで複数可
 			"pay_id"              => "",  // pay_id をつけることにより残カウントを有効化出来る
 			"count"               => 0,   // このフォームを表示させる回数 ※id指定がない場合は無効
 			// subscription
@@ -145,6 +146,7 @@ function stripe_purchase() {
 		$count        = $atts['count'];
 		$checkout_id  = $atts['checkout_id'];
 		$site_name    = esc_attr( $atts['site_name'] );
+		$metadata     = esc_attr( $atts['metadata'] );
 
 		// チェックアウト表示パラメータ
 		$checkout_args = array(
@@ -159,7 +161,7 @@ function stripe_purchase() {
 			'pay_id'              => $pay_id,
 			'count'               => $count,
 			'checkout_id'         => $checkout_id,
-			'site_name'           => $site_name
+			'site_name'           => $site_name,
 		);
 		// 通常決済の場合
 		if ( $coupon == "on" ) {
@@ -169,6 +171,9 @@ function stripe_purchase() {
 			";
 		}
 		$html_str .= $this->get_stripe_html( $checkout_args );
+		if ( ! empty( $metadata ) ) {
+			$html_str .= "<input type='hidden' name='metadata' value='".$metadata."'>";
+		}
 		$html_str .= "
 				<input type='hidden' name='checkout_id' value='" . $checkout_id . "'>
 				<input type='hidden' name='nonce' value='" . wp_create_nonce( $amount ) . "'>";
@@ -388,13 +393,16 @@ function stripe_purchase() {
 			$finish_param      = $atts['finish_param'];
 			$metadata_str      = $atts['metadata'];
 			$metadata          = null;
+
 			if ( ! empty( $metadata_str ) ) {
-				$metadata_ary = preg_split( ",", $metadata );
+				$metadata_ary = explode( ",", $metadata_str );
 				if ( is_array( $metadata_ary ) && count( $metadata_ary ) > 0 ) {
+					$metadata = array();
 					foreach ( $metadata_ary as $item_key ) {
 						$item_val = $_REQUEST[ $item_key ];
 						if ( ! empty( $item_val ) ) {
 							$metadata[ $item_key ] = $item_val;
+							$this->stripe_error_log( "=== METADATA: ".$item_key." = " . $item_val );
 						} else {
 							$metadata[ $item_key ] = null;
 						}
@@ -573,13 +581,7 @@ function stripe_purchase() {
 					// 格納メタデータ指定取得
 					$metadata = $args['metadata'];
 					if ( ! empty( $metadata ) && is_array( $metadata ) && count( $metadata ) > 0 ) {
-						foreach ( $metadata as $key=>$val ) {
-							if ( $key != "email" ) {
-								$metadata_list[ $key ] = $val;
-							}
-						}
-						var_dump( $metadata_list );
-						exit;
+						$metadata_list = array_merge( $metadata_list, $metadata );
 					}
 
 					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
@@ -590,8 +592,8 @@ function stripe_purchase() {
 							"currency"      => $currency,
 							"description"   => $description,
 							"receipt_email" => $email,
-							"metadata"      => $metadata_list,
 							"source"        => $token,
+							"metadata"      => $metadata_list,
 						) );
 						$status = $charge->status; // succeeded で成功
 						if ( "succeeded" == $status ) {
@@ -699,6 +701,16 @@ function stripe_purchase() {
 
 					// メタデータ（格納用）
 					$metadata_list = array( "email" => $email );
+					// 格納メタデータ指定取得
+					$metadata = $args['metadata'];
+					if ( ! empty( $metadata ) && is_array( $metadata ) && count( $metadata ) > 0 ) {
+						foreach ( $metadata as $key=>$val ) {
+							if ( $key != "email" ) {
+								$metadata_list[ $key ] = $val;
+							}
+						}
+					}
+
 					// 格納データを追加・削除したい場合は Hook [stripe-payment-gti-save-metadata] を作る
 					$metadata_list        = apply_filters( "stripe-payment-gti-save-metadata", $metadata_list, $args, $stripeInfo );
 					$sub_args['metadata'] = $metadata_list;
