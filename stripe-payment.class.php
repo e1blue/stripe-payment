@@ -795,6 +795,12 @@ function stripe_purchase() {
 				update_option( 'stripe-payment_result-counts', $serial_data );
 
 				// メール送信
+				$from_email_name = get_option( 'stripe_payment_from_email_name', null );
+				$from_email_address = get_option( 'stripe_payment_from_email_address', null );
+				$replyto_email_name = get_option( 'stripe_payment_replyto_email_name', null );
+				$replyto_email_address = get_option( 'stripe_payment_replyto_email_address', null );
+
+
 				// テンプレート変換
 				$replace_array = array(
 					'description'                   => $description,
@@ -839,7 +845,11 @@ function stripe_purchase() {
 				$send_mail = $this->stripe_payment_send_mail(
 					$email,
 					$email_subject_for_customer,
-					$email_for_customer
+					$email_for_customer,
+					$from_email_name,
+					$from_email_address,
+					$replyto_email_name,
+					$replyto_email_address
 				);
 				if ( $send_mail ) {
 					error_log( "SEND_MAIL result: TRUE ? " );
@@ -882,7 +892,11 @@ function stripe_purchase() {
 				$send_mail = $this->stripe_payment_send_mail(
 					get_option( 'admin_email' ),
 					$email_subject_for_admin,
-					$email_for_admin
+					$email_for_admin,
+					$from_email_name,
+					$from_email_address,
+					$replyto_email_name,
+					$replyto_email_address
 				);
 				if ( $send_mail ) {
 					error_log( "ADMIN:SEND_MAIL result: TRUE ? " );
@@ -936,6 +950,13 @@ function stripe_purchase() {
 				);
 
 				$this->stripe_error_log( $log );
+				$log = array(
+					'action' => 'stripe',
+					'result' => 'Stripe ERROR:' . $e->getMessage(),
+					'data'   => $e
+				);
+
+				$this->stripe_error_log( $log );
 
 			}
 		}
@@ -949,13 +970,29 @@ function stripe_purchase() {
 	 * @param $to
 	 * @param $subject
 	 * @param $body
+	 * @param null $from_name
+	 * @param null $from_email
+	 * @param null $reply_to_name
+	 * @param null $reply_to
 	 *
-	 * @return bool
+	 * @return mixed
 	 */
-	function stripe_payment_send_mail( $to, $subject, $body ) {
+	function stripe_payment_send_mail( $to, $subject, $body, $from_name = null, $from_email = null, $reply_to_name = null, $reply_to = null ) {
 
+		$this->stripe_error_log(" === stripe_payment_send_mail == 1 [From: ".$from_name."]" );
+
+		if ( ! empty( $from_name ) && ! empty( $from_email ) ) {
+			$this->stripe_error_log(" === stripe_payment_send_mail == 2" );
+			$headers   = array();
+			$headers[] = 'From: ' . esc_attr( $from_name ) . ' <' . $from_email . '>';
+			if ( ! empty( $reply_to_name ) && ! empty( $reply_to ) ) {
+				$headers[] = 'Reply-To: ' . esc_attr( $reply_to_name ) . ' <' . $reply_to . '>';
+			}
+			$result = wp_mail( $to, $subject, $body, $headers );
+
+			return $result;
+		}
 		$result = wp_mail( $to, $subject, $body );
-
 		return $result;
 	}
 

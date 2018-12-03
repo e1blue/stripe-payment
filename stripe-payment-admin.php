@@ -100,6 +100,15 @@ class StripePaymentSetting {   // 管理画面
 			$stripe_payment_admin_mail = esc_attr( $_POST['stripe_payment_admin_mail'] );
 			update_option( 'stripe_payment_admin_mail', $stripe_payment_admin_mail );
 
+			$stripe_payment_from_email_name = esc_attr( $_POST['stripe_payment_from_email_name'] );
+			update_option( 'stripe_payment_from_email_name', $stripe_payment_from_email_name );
+			$stripe_payment_from_email_address = esc_attr( $_POST['stripe_payment_from_email_address'] );
+			update_option( 'stripe_payment_from_email_address', $stripe_payment_from_email_address );
+			$stripe_payment_replyto_email_name = esc_attr( $_POST['stripe_payment_replyto_email_name'] );
+			update_option( 'stripe_payment_replyto_email_name', $stripe_payment_replyto_email_name );
+			$stripe_payment_replyto_email_address = esc_attr( $_POST['stripe_payment_replyto_email_address'] );
+			update_option( 'stripe_payment_replyto_email_address', $stripe_payment_replyto_email_address );
+
 			// CheckoutHelperからのsubmit時ローディング画像
 			$stripe_payment_loading_gif = esc_attr( $_POST[ 'stripe_payment_loading_gif' ] );
 			update_option( 'stripe_payment_loading_gif', $stripe_payment_loading_gif );
@@ -139,6 +148,11 @@ class StripePaymentSetting {   // 管理画面
 			$stripe_payment_customer_mail  = get_option( 'stripe_payment_customer_mail' );
 			$stripe_payment_admin_mail_subject = get_option( 'stripe_payment_admin_mail_subject' );
 			$stripe_payment_admin_mail     = get_option( 'stripe_payment_admin_mail' );
+
+			$stripe_payment_from_email_name = get_option( 'stripe_payment_from_email_name' );
+			$stripe_payment_from_email_address = get_option( 'stripe_payment_from_email_address' );
+			$stripe_payment_replyto_email_name = get_option( 'stripe_payment_replyto_email_name' );
+			$stripe_payment_replyto_email_address = get_option( 'stripe_payment_replyto_email_address' );
 
 			$stripe_payment_loading_gif = get_option( 'stripe_payment_loading_gif' );
 			?>
@@ -286,6 +300,42 @@ class StripePaymentSetting {   // 管理画面
                     <td><textarea name="stripe_payment_admin_mail"
                                   id="input_admin_mail" rows="10" cols="50"><?php echo $stripe_payment_admin_mail;
 							?></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label
+                                for="input_from_email_name"><?php _e( 'From Email Name', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input type="text" name="stripe_payment_from_email_name"
+                                  id="input_from_email_name" value="<?php echo $stripe_payment_from_email_name;
+				            ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label
+                                for="input_from_email_address"><?php _e( 'From Email Address', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input type="email" name="stripe_payment_from_email_address"
+                               id="input_from_email_address" value="<?php echo $stripe_payment_from_email_address;
+		                ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label
+                                for="input_replyto_email_name"><?php _e( 'Reply to Email Name', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input type="text" name="stripe_payment_replyto_email_name"
+                               id="input_replyto_email_name" value="<?php echo $stripe_payment_replyto_email_name;
+			            ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label
+                                for="input_replyto_email_address"><?php _e( 'Reply to Email Address', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><input type="email" name="stripe_payment_replyto_email_address"
+                               id="input_replyto_email_address" value="<?php echo $stripe_payment_replyto_email_address;
+			            ?>">
                     </td>
                 </tr>
                 <tr>

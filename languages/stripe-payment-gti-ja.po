@@ -1,75 +1,75 @@
 msgid ""
 msgstr ""
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: Stripe Payment By GTI\n"
-"POT-Creation-Date: 2018-06-06 16:33+0900\n"
-"PO-Revision-Date: 2018-06-06 16:33+0900\n"
-"Last-Translator: \n"
+"POT-Creation-Date: 2018-12-01 17:34+0900\n"
+"PO-Revision-Date: 2018-12-01 17:58+0900\n"
 "Language-Team: \n"
-"Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.0.8\n"
+"X-Generator: Poedit 2.2\n"
 "X-Poedit-Basepath: ..\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
 "X-Poedit-Flags-xgettext: --add-comments=translators:\n"
 "X-Poedit-WPHeader: stripe-payment.php\n"
 "X-Poedit-SourceCharset: UTF-8\n"
-"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
-"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;"
-"_n_noop:1,2;_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;"
+"esc_attr__;esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;"
+"esc_html_x:1,2c;_n_noop:1,2;_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"Last-Translator: \n"
+"Language: ja_JP\n"
 "X-Poedit-SearchPath-0: .\n"
 "X-Poedit-SearchPathExcluded-0: *.js\n"
 
-#: stripe-payment-admin.php:42
+#: stripe-payment-admin.php:46
 msgid "Stripe Payment"
 msgstr "Stripeペイメント"
 
-#: stripe-payment-admin.php:42
+#: stripe-payment-admin.php:46
 msgid "Stripe Setting"
 msgstr "Stripe設定"
 
-#: stripe-payment-admin.php:103
+#: stripe-payment-admin.php:116
 msgid "Saved."
-msgstr "保存されました."
+msgstr "保存されました"
 
-#: stripe-payment-admin.php:114
+#: stripe-payment-admin.php:127
 msgid "Stripe Settings"
 msgstr "Stripe設定"
 
-#: stripe-payment-admin.php:151
+#: stripe-payment-admin.php:169
 msgid "Image of Stripe Paid"
 msgstr "Stripe表示イメージ"
 
-#: stripe-payment-admin.php:157
+#: stripe-payment-admin.php:182
 msgid "Select Image."
-msgstr "画像選択"
+msgstr "画像を選択."
 
-#: stripe-payment-admin.php:164
+#: stripe-payment-admin.php:189
 msgid "Test Mode"
-msgstr "テストモードにする"
+msgstr "テストモード"
 
-#: stripe-payment-admin.php:179
+#: stripe-payment-admin.php:204
 msgid "Public Key"
 msgstr "公開キー"
 
-#: stripe-payment-admin.php:186
+#: stripe-payment-admin.php:211
 msgid "Secret Key"
 msgstr "秘密キー"
 
-#: stripe-payment-admin.php:194
+#: stripe-payment-admin.php:219
 msgid "Test Public Key"
 msgstr "テスト公開キー"
 
-#: stripe-payment-admin.php:201
+#: stripe-payment-admin.php:226
 msgid "Test Secret Key"
 msgstr "テスト秘密キー"
 
-#: stripe-payment-admin.php:209
+#: stripe-payment-admin.php:234
 msgid "currency"
-msgstr "通貨種類"
+msgstr "通貨"
 
-#: stripe-payment-admin.php:212
+#: stripe-payment-admin.php:237
 msgid ""
 "3-letter\n"
 "                            ISO code for currency. 例： jpy, usd etc. "
@@ -80,84 +80,100 @@ msgstr ""
 "例: jpy,usd など<br>単一の顧客に対して複数の通貨で決済しようとするとエラー"
 "が発生します。"
 
-#: stripe-payment-admin.php:219
+#: stripe-payment-admin.php:244
 msgid "Settlement Start Button Text"
 msgstr "決済開始ボタンのテキスト"
 
-#: stripe-payment-admin.php:223 stripe-payment-admin.php:232
+#: stripe-payment-admin.php:248 stripe-payment-admin.php:257
 #, php-format
 msgid "The invoice amount will be included in the part described as %s"
 msgstr "請求金額は %s と記載されている部分に当てはめられます"
 
-#: stripe-payment-admin.php:228
+#: stripe-payment-admin.php:253
 msgid "Settlement information transmission button text"
 msgstr "決済情報送信ボタンのテキスト"
 
-#: stripe-payment-admin.php:239
+#: stripe-payment-admin.php:264
 msgid "Thank You Message"
 msgstr "サンクス メッセージ"
 
-#: stripe-payment-admin.php:248
+#: stripe-payment-admin.php:273
 msgid "EMail Subject For Customer"
 msgstr "お客様向けメールタイトル"
 
-#: stripe-payment-admin.php:256
+#: stripe-payment-admin.php:281
 msgid "Template Of EMail For Customer"
 msgstr "お客様向けメールテンプレート"
 
-#: stripe-payment-admin.php:265
+#: stripe-payment-admin.php:290
 msgid "EMail Subject For Administrator"
 msgstr "管理者向けメールタイトル"
 
-#: stripe-payment-admin.php:273
+#: stripe-payment-admin.php:298
 msgid "Template Of EMail For Administrator"
 msgstr "管理者向けメールテンプレート"
 
-#: stripe-payment-admin.php:282
+#: stripe-payment-admin.php:307
+msgid "From Email Name"
+msgstr "送信元名称"
+
+#: stripe-payment-admin.php:316
+msgid "From Email Address"
+msgstr "送信元メールアドレス"
+
+#: stripe-payment-admin.php:325
+msgid "Reply to Email Name"
+msgstr "Reply to 名称"
+
+#: stripe-payment-admin.php:334
+msgid "Reply to Email Address"
+msgstr "Reply to メールアドレス"
+
+#: stripe-payment-admin.php:343
 msgid "Stripe's processing wait after inputting credit card Loading image"
 msgstr "クレジット情報入力後の処理待ちローディング画像"
 
-#: stripe-payment-admin.php:292
+#: stripe-payment-admin.php:353
 msgid "Update settings"
 msgstr "設定の更新"
 
-#: stripe-payment-admin.php:297
+#: stripe-payment-admin.php:358
 msgid "Stripe Item Result Count"
 msgstr "Stripeアイテム結果数"
 
-#: stripe-payment-admin.php:331
+#: stripe-payment-admin.php:392
 msgid "Details of Stripe service are here"
 msgstr "Stripe サービスの詳細はこちら"
 
-#: stripe-payment.class.php:162
+#: stripe-payment.class.php:168
 msgid "Coupon Code"
 msgstr "クーポンコード"
 
-#: stripe-payment.class.php:262
+#: stripe-payment.class.php:279
 msgid "No Item."
 msgstr "商品がなくなりました。"
 
-#: stripe-payment.class.php:796
+#: stripe-payment.class.php:864
 msgid "Billing Name"
 msgstr "請求先 氏名"
 
-#: stripe-payment.class.php:797
+#: stripe-payment.class.php:865
 msgid "Shipping Name"
 msgstr "送付先 氏名"
 
-#: stripe-payment.class.php:798
+#: stripe-payment.class.php:866
 msgid "Email"
 msgstr "メールアドレス"
 
-#: stripe-payment.class.php:799
+#: stripe-payment.class.php:867
 msgid "Card Brand"
 msgstr "カードブランド"
 
-#: stripe-payment.class.php:800
+#: stripe-payment.class.php:868
 msgid "Card No"
 msgstr "カード番号"
 
-#: stripe-payment.class.php:801
+#: stripe-payment.class.php:869
 msgid "Amount"
 msgstr "金額"
 
@@ -176,4 +192,4 @@ msgstr "Stripeペイメント"
 
 #. Author of the plugin/theme
 msgid "Takeshi Satoh@ GTI Inc."
-msgstr ""
+msgstr "株式会社ジーティーアイ さとうたけし."
