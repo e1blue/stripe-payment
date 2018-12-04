@@ -109,6 +109,9 @@ class StripePaymentSetting {   // 管理画面
 			$stripe_payment_replyto_email_address = esc_attr( $_POST['stripe_payment_replyto_email_address'] );
 			update_option( 'stripe_payment_replyto_email_address', $stripe_payment_replyto_email_address );
 
+			$stripe_payment_no_item_html = esc_attr( $_POST['stripe_payment_no_item_html'] );
+			update_option( 'stripe_payment_no_item_html', $stripe_payment_no_item_html );
+
 			// CheckoutHelperからのsubmit時ローディング画像
 			$stripe_payment_loading_gif = esc_attr( $_POST[ 'stripe_payment_loading_gif' ] );
 			update_option( 'stripe_payment_loading_gif', $stripe_payment_loading_gif );
@@ -153,6 +156,8 @@ class StripePaymentSetting {   // 管理画面
 			$stripe_payment_from_email_address = get_option( 'stripe_payment_from_email_address' );
 			$stripe_payment_replyto_email_name = get_option( 'stripe_payment_replyto_email_name' );
 			$stripe_payment_replyto_email_address = get_option( 'stripe_payment_replyto_email_address' );
+
+			$stripe_payment_no_item_html = get_option( 'stripe_payment_no_item_html' );
 
 			$stripe_payment_loading_gif = get_option( 'stripe_payment_loading_gif' );
 			?>
@@ -336,6 +341,15 @@ class StripePaymentSetting {   // 管理画面
                     <td><input type="email" name="stripe_payment_replyto_email_address"
                                id="input_replyto_email_address" value="<?php echo $stripe_payment_replyto_email_address;
 			            ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label
+                                for="input_no_item_html"><?php _e( 'No Item HTML', 'stripe-payment-gti' ); ?></label>
+                    </th>
+                    <td><textarea name="stripe_payment_no_item_html"
+                                  id="input_no_item_html" rows="10" cols="50"><?php echo $stripe_payment_no_item_html;
+			                ?></textarea>
                     </td>
                 </tr>
                 <tr>

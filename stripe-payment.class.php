@@ -276,7 +276,12 @@ function stripe_purchase() {
 			$html_str .= " data-allow-remember-me='false' ";
 			$html_str .= " data-currency='{$currency}'></script>";
 		} else {
-			$html_str .= "<p class='stripe-payment-no-item'>" . __( 'No Item.', 'stripe-payment-gti' ) . "</p>";
+			$stripe_payment_no_item_html = get_option( 'stripe_payment_no_item_html', '' );
+			if ( $stripe_payment_no_item_html != "" ) {
+				$html_str .= htmlspecialchars_decode( $stripe_payment_no_item_html );
+			} else {
+				$html_str .= "<p class='stripe-payment-no-item'>" . __( 'No Item.', 'stripe-payment-gti' ) . "</p>";
+			}
 		}
 
 		return $html_str;
@@ -570,11 +575,18 @@ function stripe_purchase() {
 				$status         = "";
 				$charge_id      = "";
 				$status_message = "";
-				if ( ! isset( $args['subscription'] ) ||
+
+				// ・subscription パラメータが存在しない
+				// ・subscription="on" ではない
+				// ・interval パラメータが存在しない
+				// ・interval パラメータが day,week,month,year の中に存在しない
+				// 上記の場合は「定期」になりません！！
+				if ( empty( $args['subscription'] ) ||
 				     $args['subscription'] != "on" ||
-				     ! isset( $args['interval'] ) ||
-				     ! in_array( $args['interval'], $use_interval ) ||
-				     ! isset( $args['plan_id'] )
+				     empty( $args['interval'] ) ||
+				     ! in_array( $args['interval'], $use_interval )
+//				     ||
+//				     ! isset( $args['plan_id'] )
 				) {
 					// メタデータ（格納用）
 					$metadata_list = array( "email" => $email );
@@ -624,8 +636,11 @@ function stripe_purchase() {
 
 					$coupon_code = $args['coupon_code'];
 
+					// plan_id が空文字の場合、item_20181101 のようなプランIDを付ける
 					if ( empty( $plan_id ) ) {
-						$plan_id = ( $description != "" ? $description : $billingName );
+						$date_str = "item_".date('Ymd');
+						// プランIDは半角英数字のみ
+						$plan_id = $date_str;
 					}
 
 					// Create Customer
